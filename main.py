@@ -1,4 +1,5 @@
 import sys
+import os
 import random
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -6,8 +7,8 @@ from PyQt5.QtGui import *
 
 class User():
     def __init__(self):
-        self.autoStart = False
         self.timerLength = 3
+        self.autoStart = False
 
 class Settings(QMainWindow):
     def __init__(self):
@@ -16,6 +17,8 @@ class Settings(QMainWindow):
         self.resize(400, 240)
 
         self.settingsBox = QFormLayout()
+        #self.settingsBox.setFormAlignment(Qt.AlignRight)
+        self.settingsBox.setAlignment(Qt.AlignCenter)
 
         self.settingsLabel = QLabel("Settings")
         self.settingsLabel.setAlignment(Qt.AlignCenter)
@@ -24,14 +27,18 @@ class Settings(QMainWindow):
 
         self.timerLabel = QLabel("Timer")
         self.timerInput = QLineEdit()
+        self.timerInput.setText(str(user.timerLength))
         self.timerInput.setMaximumWidth(100)
         self.settingsBox.addRow(self.timerLabel, self.timerInput)
 
         self.autoStartResp = QCheckBox("Auto Start")
+        if(user.autoStart == True):
+            self.autoStartResp.setChecked(True)
         #self.autoStartResp.toggled.connect()
         self.settingsBox.addWidget(self.autoStartResp)
 
         self.saveBtn = QPushButton("Save")
+        self.saveBtn.setMaximumWidth(100)
         self.saveBtn.clicked.connect(self.saveSettings)
         self.settingsBox.addWidget(self.saveBtn)
 
@@ -52,9 +59,15 @@ class Window(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.data = []
+        self.currentSentence = ""
+        self.correctAnswers = 0
+        self.active = False
+
+        self.getDefaultSentences()
         self.createMenuBar()
 
-        self.sentence = QLabel("Open a text file to get started.")
+        self.sentence = QLabel("Open a text file to get started or use the default sentences.")
         self.sentence.setAlignment(Qt.AlignCenter)
         self.sentence.setStyleSheet("font: 15px;")
 
@@ -85,11 +98,6 @@ class Window(QMainWindow):
         self.answerTimer = QTimer()
         self.answerTimer.timeout.connect(self.clearAnswer)
 
-        self.data = []
-        self.currentSentence = ""
-        self.correctAnswers = 0
-        self.active = False
-
     def createMenuBar(self):
         self.openFileAct = QAction("Open", self)
         self.openFileAct.setShortcut("Ctrl+O")
@@ -117,11 +125,16 @@ class Window(QMainWindow):
             with open(fname[0], 'r') as file:
                 self.data = file.readlines()
     
+    def getDefaultSentences(self):
+        if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
+            with open(os.path.dirname(__file__) + '/default-sentences.txt', 'r') as file:
+                self.data = file.readlines()
+
     def getRandomSentence(self):
         if(len(self.data) > 0):
-            self.newSentence = random.choice(self.data)
+            self.newSentence = random.choice(self.data).rstrip()
             while(self.newSentence == self.currentSentence and len(self.data) != 1):
-                self.newSentence = random.choice(self.data)
+                self.newSentence = random.choice(self.data).rstrip()
             self.sentence.setText(self.newSentence)
             self.currentSentence = self.newSentence
             self.active = True
@@ -136,6 +149,8 @@ class Window(QMainWindow):
         self.answerResp.setText("")
         self.sentence.setText("Generate a new sentence.")
         self.answerTimer.stop()
+        if(user.autoStart == True):
+            self.getRandomSentence()
 
     def checkAnswer(self):
         print(self.inputBox.text().rstrip())
