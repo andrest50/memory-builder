@@ -4,11 +4,14 @@ import random
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+import db
 
 class User():
     def __init__(self):
+        self.numCorrect = 0
         self.timerLength = 3
         self.autoStart = False
+        self.showCorrectSentence = False
 
 class Settings(QMainWindow):
     def __init__(self):
@@ -17,7 +20,6 @@ class Settings(QMainWindow):
         self.resize(400, 240)
 
         self.settingsBox = QFormLayout()
-        #self.settingsBox.setFormAlignment(Qt.AlignRight)
         self.settingsBox.setAlignment(Qt.AlignCenter)
 
         self.settingsLabel = QLabel("Settings")
@@ -34,8 +36,12 @@ class Settings(QMainWindow):
         self.autoStartResp = QCheckBox("Auto Start")
         if(user.autoStart == True):
             self.autoStartResp.setChecked(True)
-        #self.autoStartResp.toggled.connect()
         self.settingsBox.addWidget(self.autoStartResp)
+
+        self.showCorrectAns = QCheckBox("Show Correct Answer")
+        if(user.showCorrectSentence == True):
+            self.showCorrectAns.setChecked(True)
+        self.settingsBox.addWidget(self.showCorrectAns)
 
         self.saveBtn = QPushButton("Save")
         self.saveBtn.setMaximumWidth(100)
@@ -54,6 +60,9 @@ class Settings(QMainWindow):
         if(self.autoStartResp.isChecked()):
             print(str(self.autoStartResp.isChecked()))
             user.autoStart = True
+        if(self.showCorrectAns.isChecked()):
+            print(str(self.showCorrectAns.isChecked()))
+            user.showCorrectSentence = True
         self.close()
 class Window(QMainWindow):
     def __init__(self):
@@ -61,11 +70,13 @@ class Window(QMainWindow):
 
         self.data = []
         self.currentSentence = ""
-        self.correctAnswers = 0
         self.active = False
 
         self.getDefaultSentences()
         self.createMenuBar()
+
+        self.numCorrectLabel = QLabel("Correct: 0")
+        self.numCorrectLabel.setAlignment(Qt.AlignRight)
 
         self.sentence = QLabel("Open a text file to get started or use the default sentences.")
         self.sentence.setAlignment(Qt.AlignCenter)
@@ -77,6 +88,9 @@ class Window(QMainWindow):
         self.generateSenBtn = QPushButton("Generate Sentence", self)
         self.generateSenBtn.clicked.connect(self.getRandomSentence)
 
+        self.correctAnsLabel = QLabel("")
+        self.correctAnsLabel.setAlignment(Qt.AlignCenter)
+
         self.answerResp = QLabel("")
         self.answerResp.setAlignment(Qt.AlignCenter)
 
@@ -84,7 +98,9 @@ class Window(QMainWindow):
         self.setCentralWidget(self.window)
 
         self.layout = QVBoxLayout()
+        self.layout.addWidget(self.numCorrectLabel)
         self.layout.addWidget(self.sentence)
+        self.layout.addWidget(self.correctAnsLabel)
         self.layout.addWidget(self.answerResp)
         self.layout.addWidget(self.inputBox)
         self.layout.addWidget(self.generateSenBtn)
@@ -131,6 +147,7 @@ class Window(QMainWindow):
                 self.data = file.readlines()
 
     def getRandomSentence(self):
+        self.correctAnsLabel.setText("")
         if(len(self.data) > 0):
             self.newSentence = random.choice(self.data).rstrip()
             while(self.newSentence == self.currentSentence and len(self.data) != 1):
@@ -153,28 +170,38 @@ class Window(QMainWindow):
             self.getRandomSentence()
 
     def checkAnswer(self):
-        print(self.inputBox.text().rstrip())
-        print(self.currentSentence.rstrip())
+        if(self.currentSentence):
+            print(self.inputBox.text().rstrip())
+            print(self.currentSentence.rstrip())
 
-        if(self.inputBox.text().rstrip() == self.currentSentence.rstrip() and self.active == True):
-            self.correctAnswers += 1
-            self.answerResp.setText("Correct!")
-        else:
-            self.answerResp.setText("Incorrect!")
+            if(self.inputBox.text().rstrip() == self.currentSentence.rstrip() and self.active == True):
+                user.numCorrect += 1
+                self.numCorrectLabel.setText("Correct: " + str(user.numCorrect))
+                self.answerResp.setText("Correct!")
+            else:
+                self.answerResp.setText("Incorrect!")
 
-        self.answerTimer.start(2000)
-        self.active = False
-        self.inputBox.setText("")
+            if(user.showCorrectSentence):
+                self.correctAnsLabel.setText(self.currentSentence.rstrip())
+            self.answerTimer.start(2000)
+            self.active = False
+            self.inputBox.setText("")
+            self.currentSentence = ""
 
-        print(self.correctAnswers)
+            print(user.numCorrect)
 
 if __name__ == "__main__":
     app = QApplication([])
-
     user = User()
+    
+    """
+    connection = db.create_connection('data.db')
+    db.add_user(connection, [user.timerLength, user.autoStart])
+    """
 
     main = Window()
     main.setWindowTitle("Memory Builder")
     main.resize(480, 320)
     main.show()
+    #connection.close()
     sys.exit(app.exec_())
