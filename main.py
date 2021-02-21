@@ -9,11 +9,11 @@ import db
 class User():
     def __init__(self):
         self.numCorrect = 0
-        self.timerLength = 3
+        self.timerDuration = 3
         self.autoStart = False
         self.showCorrectSentence = False
 
-class Settings(QMainWindow):
+class SettingsWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -29,19 +29,19 @@ class Settings(QMainWindow):
 
         self.timerLabel = QLabel("Timer")
         self.timerInput = QLineEdit()
-        self.timerInput.setText(str(user.timerLength))
+        self.timerInput.setText(str(user.timerDuration))
         self.timerInput.setMaximumWidth(100)
         self.settingsBox.addRow(self.timerLabel, self.timerInput)
 
-        self.autoStartResp = QCheckBox("Auto Start")
+        self.autoStartCB = QCheckBox("Auto Start")
         if(user.autoStart == True):
-            self.autoStartResp.setChecked(True)
-        self.settingsBox.addWidget(self.autoStartResp)
+            self.autoStartCB.setChecked(True)
+        self.settingsBox.addWidget(self.autoStartCB)
 
-        self.showCorrectAns = QCheckBox("Show Correct Answer")
+        self.showCorrectCB = QCheckBox("Show Correct Answer")
         if(user.showCorrectSentence == True):
-            self.showCorrectAns.setChecked(True)
-        self.settingsBox.addWidget(self.showCorrectAns)
+            self.showCorrectCB.setChecked(True)
+        self.settingsBox.addWidget(self.showCorrectCB)
 
         self.saveBtn = QPushButton("Save")
         self.saveBtn.setMaximumWidth(100)
@@ -50,27 +50,24 @@ class Settings(QMainWindow):
 
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
-
         self.window.setLayout(self.settingsBox)     
 
     def saveSettings(self):
         if(self.timerInput.text()):
-            print(str(self.timerInput.text()))
-            user.timerLength = int(self.timerInput.text())
-        if(self.autoStartResp.isChecked()):
-            print(str(self.autoStartResp.isChecked()))
+            user.timerDuration = int(self.timerInput.text())
+        if(self.autoStartCB.isChecked()):
             user.autoStart = True
-        if(self.showCorrectAns.isChecked()):
-            print(str(self.showCorrectAns.isChecked()))
+        if(self.showCorrectCB.isChecked()):
             user.showCorrectSentence = True
         self.close()
-class Window(QMainWindow):
+
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.data = []
         self.currentSentence = ""
-        self.active = False
+        self.sentenceActive = False
 
         self.getDefaultSentences()
         self.createMenuBar()
@@ -91,8 +88,8 @@ class Window(QMainWindow):
         self.correctAnsLabel = QLabel("")
         self.correctAnsLabel.setAlignment(Qt.AlignCenter)
 
-        self.answerResp = QLabel("")
-        self.answerResp.setAlignment(Qt.AlignCenter)
+        self.correctOrNotLabel = QLabel("")
+        self.correctOrNotLabel.setAlignment(Qt.AlignCenter)
 
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
@@ -101,12 +98,12 @@ class Window(QMainWindow):
         self.layout.addWidget(self.numCorrectLabel)
         self.layout.addWidget(self.sentence)
         self.layout.addWidget(self.correctAnsLabel)
-        self.layout.addWidget(self.answerResp)
+        self.layout.addWidget(self.correctOrNotLabel)
         self.layout.addWidget(self.inputBox)
         self.layout.addWidget(self.generateSenBtn)
         self.window.setLayout(self.layout)
 
-        self.settingsWindow = Settings()
+        self.settingsWindow = SettingsWindow()
 
         self.respTimer = QTimer()
         self.respTimer.timeout.connect(self.clearSentence)
@@ -136,7 +133,6 @@ class Window(QMainWindow):
         dialog = QFileDialog()
         fname = QFileDialog().getOpenFileName(self, 'Open file', '/Andres/Text-Files', 
             'Text Files (*.txt)')
-        print(fname[0])
         if(fname[0]):
             with open(fname[0], 'r') as file:
                 self.data = file.readlines()
@@ -154,41 +150,42 @@ class Window(QMainWindow):
                 self.newSentence = random.choice(self.data).rstrip()
             self.sentence.setText(self.newSentence)
             self.currentSentence = self.newSentence
-            self.active = True
+            self.sentenceActive = True
             self.inputBox.setFocus()
-            self.respTimer.start(user.timerLength * 1000)
+            self.respTimer.start(user.timerDuration * 1000)
             
     def clearSentence(self):
         self.sentence.setText("Type the sentence and hit Enter.")
         self.respTimer.stop()
 
     def clearAnswer(self):
-        self.answerResp.setText("")
+        self.correctOrNotLabel.setText("")
         self.sentence.setText("Generate a new sentence.")
         self.answerTimer.stop()
         if(user.autoStart == True):
             self.getRandomSentence()
 
     def checkAnswer(self):
-        if(self.currentSentence):
+        if(self.sentenceActive):
             print(self.inputBox.text().rstrip())
             print(self.currentSentence.rstrip())
 
-            if(self.inputBox.text().rstrip() == self.currentSentence.rstrip() and self.active == True):
+            if(self.inputBox.text().rstrip() == self.currentSentence.rstrip() and self.sentenceActive == True):
                 user.numCorrect += 1
                 self.numCorrectLabel.setText("Correct: " + str(user.numCorrect))
-                self.answerResp.setText("Correct!")
+                self.correctOrNotLabel.setText("Correct!")
             else:
-                self.answerResp.setText("Incorrect!")
+                self.correctOrNotLabel.setText("Incorrect!")
 
             if(user.showCorrectSentence):
                 self.correctAnsLabel.setText(self.currentSentence.rstrip())
-            self.answerTimer.start(2000)
-            self.active = False
-            self.inputBox.setText("")
-            self.currentSentence = ""
 
-            print(user.numCorrect)
+            if(self.sentence.text() != "Type the sentence and hit Enter."):
+                self.respTimer.stop()
+
+            self.answerTimer.start(2000)
+            self.sentenceActive = False
+            self.inputBox.setText("")
 
 if __name__ == "__main__":
     app = QApplication([])
@@ -196,10 +193,10 @@ if __name__ == "__main__":
     
     """
     connection = db.create_connection('data.db')
-    db.add_user(connection, [user.timerLength, user.autoStart])
+    db.add_user(connection, [user.timerDuration, user.autoStart])
     """
 
-    main = Window()
+    main = MainWindow()
     main.setWindowTitle("Memory Builder")
     main.resize(480, 320)
     main.show()
