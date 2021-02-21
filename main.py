@@ -80,7 +80,7 @@ class MainWindow(QMainWindow):
         self.getDefaultSentences()
         self.createMenuBar()
 
-        self.numCorrectLabel = QLabel("Correct: 0")
+        self.numCorrectLabel = QLabel("Correct: " + str(user.numCorrect))
         self.numCorrectLabel.setAlignment(Qt.AlignRight)
 
         self.sentence = QLabel("Open a text file to get started or use the default sentences.")
