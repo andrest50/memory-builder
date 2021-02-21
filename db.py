@@ -13,16 +13,55 @@ def create_connection(db_file):
     return connection
 
 def create_users_table(connection):
-    connection.execute('''CREATE TABLE users (
-        timerLength Int,
-        autoStart Bool
-    )''')
+    try:
+        sql = '''CREATE TABLE users (
+            numCorrect Int,
+            timerDuration Int,
+            autoStart Bool,
+            showCorrectAnswer Bool
+        )'''
+        connection.execute(sql)
+    except:
+        print("Table already exists.")
+
+def drop_users_table(connection):
+    sql = '''DROP TABLE users'''
+    connection.execute(sql)
+    connection.commit()
+
+def get_all_users(connection):
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM users')
+    data = cursor.fetchall()
+    print(data)
+    return data
 
 def add_user(connection, user):
-    sql = ''' INSERT INTO users(timerLength, autoStart) VALUES (?, ?)'''
+    print(user)
+    sql = '''INSERT INTO users VALUES (?, ?, ?, ?)'''
+    connection.execute(sql, user)
+    connection.commit()
+
+def update_user(connection, user):
     cursor = connection.cursor()
-    cursor.execute(sql, user)
+    print(cursor.lastrowid)
+    sql = '''UPDATE users SET numCorrect = ?, timerDuration = ?, autoStart = ?, showCorrectAnswer = ?'''
+    connection.execute(sql, user)
+    connection.commit()
+
+def test_user(user_num):
+    users = {
+        "1": (5, 3, True, True),
+        "2": (0, 3, False, False),
+        "3": (2, 4, True, False),
+        "4": (1, 5, False, True)
+    }
+    return users[str(user_num)]
 
 if __name__ == '__main__':
     connection = create_connection('data.db')
+    #drop_users_table(connection)
+    #create_users_table(connection)
+    #add_user(connection, test_user(3))
+    #get_all_users(connection)
     connection.close()

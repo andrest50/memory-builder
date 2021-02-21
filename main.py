@@ -19,8 +19,10 @@ class SettingsWindow(QMainWindow):
 
         self.resize(400, 240)
 
+        self.layout = QVBoxLayout()
+
         self.settingsBox = QFormLayout()
-        self.settingsBox.setAlignment(Qt.AlignCenter)
+        self.settingsBox.setAlignment(Qt.AlignHCenter)
 
         self.settingsLabel = QLabel("Settings")
         self.settingsLabel.setAlignment(Qt.AlignCenter)
@@ -48,17 +50,23 @@ class SettingsWindow(QMainWindow):
         self.saveBtn.clicked.connect(self.saveSettings)
         self.settingsBox.addWidget(self.saveBtn)
 
+        self.layout.addLayout(self.settingsBox)
+
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
-        self.window.setLayout(self.settingsBox)     
+        self.window.setLayout(self.layout)     
 
     def saveSettings(self):
         if(self.timerInput.text()):
             user.timerDuration = int(self.timerInput.text())
         if(self.autoStartCB.isChecked()):
             user.autoStart = True
+        else:
+            user.autoStart = False
         if(self.showCorrectCB.isChecked()):
             user.showCorrectSentence = True
+        else:
+            user.showCorrectSentence = False
         self.close()
 
 class MainWindow(QMainWindow):
@@ -126,6 +134,11 @@ class MainWindow(QMainWindow):
         self.fileMenu.addAction(self.openFileAct)
         self.menubar.addAction(self.settingsAct)
 
+    def closeEvent(self, event):
+        db.update_user(connection, [user.numCorrect, user.timerDuration, user.autoStart, user.showCorrectSentence])
+        connection.close()
+        self.close()
+
     def openSettings(self):
         self.settingsWindow.show()
 
@@ -191,14 +204,18 @@ if __name__ == "__main__":
     app = QApplication([])
     user = User()
     
-    """
     connection = db.create_connection('data.db')
-    db.add_user(connection, [user.timerDuration, user.autoStart])
-    """
+    data = db.get_all_users(connection)
+    if(len(data) == 0):
+        db.add_user(connection, [user.numCorrect, user.timerDuration, user.autoStart, user.showCorrectSentence])
+    else:
+        user.numCorrect = data[0][0]
+        user.timerDuration = data[0][1]
+        user.autoStart = data[0][2]
+        user.showCorrectSentence = data[0][3]
 
     main = MainWindow()
     main.setWindowTitle("Memory Builder")
     main.resize(480, 320)
     main.show()
-    #connection.close()
     sys.exit(app.exec_())
