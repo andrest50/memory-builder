@@ -10,15 +10,15 @@ import db
 
 class User():
     def __init__(self):
-        self.numCorrect = 0
-        self.timerDuration = 3
-        self.autoStart = False
-        self.showCorrectSentence = False
+        self.num_correct = 0
+        self.timer_duration = 3
+        self.auto_start = False
+        self.show_correct_sentence = False
 
 class SentenceList():
     def __init__(self):
         self.sentences = []
-        self.numSentences = 0
+        self.num_sentences = 0
 
 class SettingsWindow(QMainWindow):
     def __init__(self):
@@ -28,244 +28,244 @@ class SettingsWindow(QMainWindow):
 
         self.layout = QVBoxLayout()
 
-        self.settingsBox = QFormLayout()
-        self.settingsBox.setAlignment(Qt.AlignHCenter)
+        self.settings_box = QFormLayout()
+        self.settings_box.setAlignment(Qt.AlignHCenter)
 
-        self.settingsLabel = QLabel("Settings")
-        self.settingsLabel.setAlignment(Qt.AlignCenter)
-        self.settingsLabel.setStyleSheet("font: 12px")
-        self.settingsBox.addRow(self.settingsLabel)
+        self.settings_label = QLabel("Settings")
+        self.settings_label.setAlignment(Qt.AlignCenter)
+        self.settings_label.setStyleSheet("font: 12px")
+        self.settings_box.addRow(self.settings_label)
 
-        self.timerLabel = QLabel("Timer")
-        self.timerInput = QLineEdit()
-        self.timerInput.setText(str(user.timerDuration))
-        self.timerInput.setMaximumWidth(100)
-        self.settingsBox.addRow(self.timerLabel, self.timerInput)
+        self.timer_label = QLabel("Timer")
+        self.timer_input = QLineEdit()
+        self.timer_input.setText(str(user.timer_duration))
+        self.timer_input.setMaximumWidth(100)
+        self.settings_box.addRow(self.timer_label, self.timer_input)
 
-        self.autoStartCB = QCheckBox("Auto Start")
-        if(user.autoStart == True):
-            self.autoStartCB.setChecked(True)
-        self.settingsBox.addWidget(self.autoStartCB)
+        self.auto_start_CB = QCheckBox("Auto Start")
+        if(user.auto_start == True):
+            self.auto_start_CB.setChecked(True)
+        self.settings_box.addWidget(self.auto_start_CB)
 
-        self.showCorrectCB = QCheckBox("Show Correct Answer")
-        if(user.showCorrectSentence == True):
-            self.showCorrectCB.setChecked(True)
-        self.settingsBox.addWidget(self.showCorrectCB)
+        self.show_correct_CB = QCheckBox("Show Correct Answer")
+        if(user.show_correct_sentence == True):
+            self.show_correct_CB.setChecked(True)
+        self.settings_box.addWidget(self.show_correct_CB)
 
-        self.saveBtn = QPushButton("Save")
-        self.saveBtn.setMaximumWidth(100)
-        self.saveBtn.clicked.connect(self.saveSettings)
-        self.settingsBox.addWidget(self.saveBtn)
+        self.save_btn = QPushButton("Save")
+        self.save_btn.setMaximumWidth(100)
+        self.save_btn.clicked.connect(self.SaveSettings)
+        self.settings_box.addWidget(self.save_btn)
 
-        self.layout.addLayout(self.settingsBox)
+        self.layout.addLayout(self.settings_box)
 
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
         self.window.setLayout(self.layout)     
 
-    def saveSettings(self):
-        if(self.timerInput.text()):
-            user.timerDuration = int(self.timerInput.text())
-        if(self.autoStartCB.isChecked()):
-            user.autoStart = True
+    def SaveSettings(self):
+        if(self.timer_input.text()):
+            user.timer_duration = int(self.timer_input.text())
+        if(self.auto_start_CB.isChecked()):
+            user.auto_start = True
         else:
-            user.autoStart = False
-        if(self.showCorrectCB.isChecked()):
-            user.showCorrectSentence = True
+            user.auto_start = False
+        if(self.show_correct_CB.isChecked()):
+            user.show_correct_sentence = True
         else:
-            user.showCorrectSentence = False
+            user.show_correct_sentence = False
         self.close()
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        if sentenceLists:
-            self.currentList = copy.deepcopy(sentenceLists[0])
+        if sentence_lists:
+            self.current_list = copy.deepcopy(sentence_lists[0])
         else:
-            self.currentList = SentenceList()
+            self.current_list = SentenceList()
 
-        self.currentSentence = ""
-        self.sentenceActive = False
+        self.current_sentence = ""
+        self.sentence_active = False
 
         #self.getDefaultSentences()
-        self.createMenuBar()
+        self.CreateMenuBar()
 
-        self.numCorrectLabel = QLabel("Correct: " + str(user.numCorrect))
-        self.numCorrectLabel.setAlignment(Qt.AlignRight)
+        self.num_correct_label = QLabel("Correct: " + str(user.num_correct))
+        self.num_correct_label.setAlignment(Qt.AlignRight)
 
         self.sentence = QLabel("Open a text file to get started or use the default sentences.")
         self.sentence.setAlignment(Qt.AlignCenter)
         self.sentence.setStyleSheet("font: 15px;")
 
-        self.inputBox = QLineEdit("", self)
-        self.inputBox.returnPressed.connect(self.checkAnswer)
+        self.input_box = QLineEdit("", self)
+        self.input_box.returnPressed.connect(self.CheckAnswer)
 
-        self.generateSenBtn = QPushButton("Generate Sentence", self)
-        self.generateSenBtn.clicked.connect(self.getRandomSentence)
+        self.generate_sentence_btn = QPushButton("Generate Sentence", self)
+        self.generate_sentence_btn.clicked.connect(self.GetRandomSentence)
 
-        self.correctAnsLabel = QLabel("")
-        self.correctAnsLabel.setAlignment(Qt.AlignCenter)
+        self.correct_answer_label = QLabel("")
+        self.correct_answer_label.setAlignment(Qt.AlignCenter)
 
-        self.correctOrNotLabel = QLabel("")
-        self.correctOrNotLabel.setAlignment(Qt.AlignCenter)
+        self.correct_or_not_label = QLabel("")
+        self.correct_or_not_label.setAlignment(Qt.AlignCenter)
 
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
 
         self.layout = QVBoxLayout()
-        self.layout.addWidget(self.numCorrectLabel)
+        self.layout.addWidget(self.num_correct_label)
         self.layout.addWidget(self.sentence)
-        self.layout.addWidget(self.correctAnsLabel)
-        self.layout.addWidget(self.correctOrNotLabel)
-        self.layout.addWidget(self.inputBox)
-        self.layout.addWidget(self.generateSenBtn)
+        self.layout.addWidget(self.correct_answer_label)
+        self.layout.addWidget(self.correct_or_not_label)
+        self.layout.addWidget(self.input_box)
+        self.layout.addWidget(self.generate_sentence_btn)
         self.window.setLayout(self.layout)
 
-        self.settingsWindow = SettingsWindow()
+        self.settings_window = SettingsWindow()
 
-        self.respTimer = QTimer()
-        self.respTimer.timeout.connect(self.clearSentence)
+        self.resp_timer = QTimer()
+        self.resp_timer.timeout.connect(self.ClearSentence)
 
-        self.answerTimer = QTimer()
-        self.answerTimer.timeout.connect(self.clearAnswer)
+        self.answer_timer = QTimer()
+        self.answer_timer.timeout.connect(self.ClearAnswer)
 
-    def createMenuBar(self):
-        self.openFileAct = QAction("Open", self)
-        self.openFileAct.setShortcut("Ctrl+O")
-        self.openFileAct.setStatusTip("Open a file")
-        self.openFileAct.triggered.connect(self.openFile)
+    def CreateMenuBar(self):
+        self.open_file_act = QAction("Open", self)
+        self.open_file_act.setShortcut("Ctrl+O")
+        self.open_file_act.setStatusTip("Open a file")
+        self.open_file_act.triggered.connect(self.OpenFile)
 
-        self.settingsAct = QAction("Settings", self)
-        self.settingsAct.setShortcut("Ctrl+S")
-        self.settingsAct.triggered.connect(self.openSettings)
+        self.settings_act = QAction("Settings", self)
+        self.settings_act.setShortcut("Ctrl+S")
+        self.settings_act.triggered.connect(self.OpenSettings)
 
         self.menubar = self.menuBar()
-        self.fileMenu = self.menubar.addMenu("File")
-        self.fileMenu.addAction(self.openFileAct)
-        self.menubar.addAction(self.settingsAct)
+        self.file_menu = self.menubar.addMenu("File")
+        self.file_menu.addAction(self.open_file_act)
+        self.menubar.addAction(self.settings_act)
 
     def closeEvent(self, event):
-        db.update_user(connection, [user.numCorrect, user.timerDuration, user.autoStart, user.showCorrectSentence])
+        db.UpdateUser(connection, [user.num_correct, user.timer_duration, user.auto_start, user.show_correct_sentence])
         duplicate = False
-        for sentenceList in sentenceLists:
-            if self.currentList.sentences == sentenceList.sentences:
+        for sentence_list in sentence_lists:
+            if self.current_list.sentences == sentence_list.sentences:
                 duplicate = True
                 break
-        if(duplicate == False and self.currentList.sentences):
-            json_string = json.dumps(self.currentList.sentences)
-            db.add_sentence_list(connection, json_string)
+        if(duplicate == False and self.current_list.sentences):
+            json_string = json.dumps(self.current_list.sentences)
+            db.AddSentenceList(connection, json_string)
         connection.close()
         self.close()
 
-    def openSettings(self):
-        self.settingsWindow.show()
+    def OpenSettings(self):
+        self.settings_window.show()
 
-    def openFile(self):
+    def OpenFile(self):
         dialog = QFileDialog()
         fname = QFileDialog().getOpenFileName(self, 'Open file', '/Andres/Text-Files', 
             'Text Files (*.txt)')
         if(fname[0]):
             duplicate = False
-            for sentenceList in sentenceLists:
-                if self.currentList.sentences == sentenceList.sentences:
+            for sentence_list in sentence_lists:
+                if self.current_list.sentences == sentence_list.sentences:
                     duplicate = True
                     break
-            if(duplicate == False and self.currentList.sentences):
-                json_string = json.dumps(self.currentList.sentences)
-                db.add_sentence_list(connection, json_string)
+            if(duplicate == False and self.current_list.sentences):
+                json_string = json.dumps(self.current_list.sentences)
+                db.AddSentenceList(connection, json_string)
 
             with open(fname[0], 'r') as file:
-                self.currentList.sentences = file.readlines()
+                self.current_list.sentences = file.readlines()
     
-    def getDefaultSentences(self):
+    def GetDefaultSentences(self):
         if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
             with open(os.path.dirname(__file__) + '/default-sentences.txt', 'r') as file:
-                self.currentList.sentences = file.readlines()
+                self.current_list.sentences = file.readlines()
 
-    def getRandomSentence(self):
-        self.correctAnsLabel.setText("")
-        if(len(self.currentList.sentences) > 0):
-            self.newSentence = random.choice(self.currentList.sentences).rstrip()
-            while(self.newSentence == self.currentSentence and len(self.currentList.sentences) != 1):
-                self.newSentence = random.choice(self.currentList.sentences).rstrip()
-            self.sentence.setText(self.newSentence)
-            self.currentSentence = self.newSentence
-            self.sentenceActive = True
-            self.inputBox.setFocus()
-            self.respTimer.start(user.timerDuration * 1000)
+    def GetRandomSentence(self):
+        self.correct_answer_label.setText("")
+        if(len(self.current_list.sentences) > 0):
+            self.new_sentence = random.choice(self.current_list.sentences).rstrip()
+            while(self.new_sentence == self.current_sentence and len(self.current_list.sentences) != 1):
+                self.new_sentence = random.choice(self.current_list.sentences).rstrip()
+            self.sentence.setText(self.new_sentence)
+            self.current_sentence = self.new_sentence
+            self.sentence_active = True
+            self.input_box.setFocus()
+            self.resp_timer.start(user.timer_duration * 1000)
             
-    def clearSentence(self):
+    def ClearSentence(self):
         self.sentence.setText("Type the sentence and hit Enter.")
-        self.respTimer.stop()
+        self.resp_timer.stop()
 
-    def clearAnswer(self):
-        self.correctOrNotLabel.setText("")
+    def ClearAnswer(self):
+        self.correct_or_not_label.setText("")
         self.sentence.setText("Generate a new sentence.")
-        self.answerTimer.stop()
-        if(user.autoStart == True):
-            self.getRandomSentence()
+        self.answer_timer.stop()
+        if(user.auto_start == True):
+            self.GetRandomSentence()
 
-    def checkAnswer(self):
-        if(self.sentenceActive):
-            print(self.inputBox.text().rstrip())
-            print(self.currentSentence.rstrip())
+    def CheckAnswer(self):
+        if(self.sentence_active):
+            print(self.input_box.text().rstrip())
+            print(self.current_sentence.rstrip())
 
-            if(self.inputBox.text().rstrip() == self.currentSentence.rstrip() and self.sentenceActive == True):
-                user.numCorrect += 1
-                self.numCorrectLabel.setText("Correct: " + str(user.numCorrect))
-                self.correctOrNotLabel.setText("Correct!")
+            if(self.input_box.text().rstrip() == self.current_sentence.rstrip() and self.sentence_active == True):
+                user.num_correct += 1
+                self.num_correct_label.setText("Correct: " + str(user.num_correct))
+                self.correct_or_not_label.setText("Correct!")
             else:
-                self.correctOrNotLabel.setText("Incorrect!")
+                self.correct_or_not_label.setText("Incorrect!")
 
-            if(user.showCorrectSentence):
-                self.correctAnsLabel.setText(self.currentSentence.rstrip())
+            if(user.show_correct_sentence):
+                self.correct_answer_label.setText(self.current_sentence.rstrip())
 
             if(self.sentence.text() != "Type the sentence and hit Enter."):
-                self.respTimer.stop()
+                self.resp_timer.stop()
 
-            self.answerTimer.start(2000)
-            self.sentenceActive = False
-            self.inputBox.setText("")
+            self.answer_timer.start(2000)
+            self.sentence_active = False
+            self.input_box.setText("")
 
 def getDBData(db, user):
-    data = db.get_all_users(connection)
-    sentenceLists = db.get_all_sentence_lists(connection)
-    print(f"here: {sentenceLists}")
+    data = db.GetAllUsers(connection)
+    sentence_lists = db.GetAllSentenceLists(connection)
+    print(f"here: {sentence_lists}")
 
     if(len(data) == 0):
-        db.add_user(connection, [user.numCorrect, user.timerDuration, user.autoStart, user.showCorrectSentence])
+        db.AddUser(connection, [user.num_correct, user.timer_duration, user.auto_start, user.show_correct_sentence])
     else:
-        user.numCorrect = data[0][0]
-        user.timerDuration = data[0][1]
-        user.autoStart = data[0][2]
-        user.showCorrectSentence = data[0][3]
+        user.num_correct = data[0][0]
+        user.timer_duration = data[0][1]
+        user.auto_start = data[0][2]
+        user.show_correct_sentence = data[0][3]
 
-    deserializedLists = [] # List of SentenceList objects
-    if not sentenceLists:
+    deserialized_lists = [] # List of SentenceList objects
+    if not sentence_lists:
         if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
             with open(os.path.dirname(__file__) + '/default-sentences.txt', 'r') as file:
-                newList = SentenceList()
-                newList.sentences = file.readlines()
-                deserializedLists.append(newList)
-                print(json.dumps(deserializedLists[0].sentences))
-                db.add_sentence_list(connection, json.dumps(deserializedLists[0].sentences))
+                new_list = SentenceList()
+                new_list.sentences = file.readlines()
+                deserialized_lists.append(new_list)
+                print(json.dumps(deserialized_lists[0].sentences))
+                db.AddSentenceList(connection, json.dumps(deserialized_lists[0].sentences))
     else:
-        for sentenceList in sentenceLists:
-            newList = SentenceList()
-            newList.sentences = json.loads(''.join(sentenceList))
-            deserializedLists.append(newList)
-            print(deserializedLists[-1])
+        for sentence_list in sentence_lists:
+            new_list = SentenceList()
+            new_list.sentences = json.loads(''.join(sentence_list))
+            deserialized_lists.append(new_list)
+            print(deserialized_lists[-1])
     
-    return deserializedLists
+    return deserialized_lists
 
 if __name__ == "__main__":
     app = QApplication([])
     user = User()
     
-    connection = db.create_connection('data.db')
-    sentenceLists = getDBData(db, user)
-    print(len(sentenceLists))
+    connection = db.CreateConnection('data.db')
+    sentence_lists = getDBData(db, user)
+    print(len(sentence_lists))
 
     main = MainWindow()
     main.setWindowTitle("Memory Builder")
