@@ -1,5 +1,7 @@
 import sys
 import os
+import json
+import copy
 import random
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -12,6 +14,11 @@ class User():
         self.timerDuration = 3
         self.autoStart = False
         self.showCorrectSentence = False
+
+class SentenceList():
+    def __init__(self):
+        self.sentences = []
+        self.numSentences = 0
 
 class SettingsWindow(QMainWindow):
     def __init__(self):
@@ -73,11 +80,15 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.data = []
+        if sentenceLists:
+            self.currentList = copy.deepcopy(sentenceLists[0])
+        else:
+            self.currentList = SentenceList()
+
         self.currentSentence = ""
         self.sentenceActive = False
 
-        self.getDefaultSentences()
+        #self.getDefaultSentences()
         self.createMenuBar()
 
         self.numCorrectLabel = QLabel("Correct: " + str(user.numCorrect))
@@ -136,6 +147,14 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         db.update_user(connection, [user.numCorrect, user.timerDuration, user.autoStart, user.showCorrectSentence])
+        duplicate = False
+        for sentenceList in sentenceLists:
+            if self.currentList.sentences == sentenceList.sentences:
+                duplicate = True
+                break
+        if(duplicate == False and self.currentList.sentences):
+            json_string = json.dumps(self.currentList.sentences)
+            db.add_sentence_list(connection, json_string)
         connection.close()
         self.close()
 
@@ -147,20 +166,29 @@ class MainWindow(QMainWindow):
         fname = QFileDialog().getOpenFileName(self, 'Open file', '/Andres/Text-Files', 
             'Text Files (*.txt)')
         if(fname[0]):
+            duplicate = False
+            for sentenceList in sentenceLists:
+                if self.currentList.sentences == sentenceList.sentences:
+                    duplicate = True
+                    break
+            if(duplicate == False and self.currentList.sentences):
+                json_string = json.dumps(self.currentList.sentences)
+                db.add_sentence_list(connection, json_string)
+
             with open(fname[0], 'r') as file:
-                self.data = file.readlines()
+                self.currentList.sentences = file.readlines()
     
     def getDefaultSentences(self):
         if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
             with open(os.path.dirname(__file__) + '/default-sentences.txt', 'r') as file:
-                self.data = file.readlines()
+                self.currentList.sentences = file.readlines()
 
     def getRandomSentence(self):
         self.correctAnsLabel.setText("")
-        if(len(self.data) > 0):
-            self.newSentence = random.choice(self.data).rstrip()
-            while(self.newSentence == self.currentSentence and len(self.data) != 1):
-                self.newSentence = random.choice(self.data).rstrip()
+        if(len(self.currentList.sentences) > 0):
+            self.newSentence = random.choice(self.currentList.sentences).rstrip()
+            while(self.newSentence == self.currentSentence and len(self.currentList.sentences) != 1):
+                self.newSentence = random.choice(self.currentList.sentences).rstrip()
             self.sentence.setText(self.newSentence)
             self.currentSentence = self.newSentence
             self.sentenceActive = True
@@ -200,12 +228,11 @@ class MainWindow(QMainWindow):
             self.sentenceActive = False
             self.inputBox.setText("")
 
-if __name__ == "__main__":
-    app = QApplication([])
-    user = User()
-    
-    connection = db.create_connection('data.db')
+def getDBData(db, user):
     data = db.get_all_users(connection)
+    sentenceLists = db.get_all_sentence_lists(connection)
+    print(f"here: {sentenceLists}")
+
     if(len(data) == 0):
         db.add_user(connection, [user.numCorrect, user.timerDuration, user.autoStart, user.showCorrectSentence])
     else:
@@ -213,6 +240,32 @@ if __name__ == "__main__":
         user.timerDuration = data[0][1]
         user.autoStart = data[0][2]
         user.showCorrectSentence = data[0][3]
+
+    deserializedLists = [] # List of SentenceList objects
+    if not sentenceLists:
+        if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
+            with open(os.path.dirname(__file__) + '/default-sentences.txt', 'r') as file:
+                newList = SentenceList()
+                newList.sentences = file.readlines()
+                deserializedLists.append(newList)
+                print(json.dumps(deserializedLists[0].sentences))
+                db.add_sentence_list(connection, json.dumps(deserializedLists[0].sentences))
+    else:
+        for sentenceList in sentenceLists:
+            newList = SentenceList()
+            newList.sentences = json.loads(''.join(sentenceList))
+            deserializedLists.append(newList)
+            print(deserializedLists[-1])
+    
+    return deserializedLists
+
+if __name__ == "__main__":
+    app = QApplication([])
+    user = User()
+    
+    connection = db.create_connection('data.db')
+    sentenceLists = getDBData(db, user)
+    print(len(sentenceLists))
 
     main = MainWindow()
     main.setWindowTitle("Memory Builder")
