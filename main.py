@@ -10,17 +10,20 @@ from PyQt5.QtGui import *
 import db
 
 class User():
-    def __init__(self):
-        self.num_correct = 0
-        self.timer_duration = 3
-        self.auto_start = False
-        self.show_correct_sentence = False
+    def __init__(self, num_correct = 0, timer_duration = 3, auto_start = False, show_correct_sentence = False):
+        self.num_correct = num_correct
+        self.timer_duration = timer_duration
+        self.auto_start = auto_start
+        self.show_correct_sentence = show_correct_sentence
 
 class SentenceList():
     def __init__(self, sentences = [], title = "Default", num_correct = 0):
         self.sentences = sentences
         self.title = title
         self.num_correct = num_correct 
+
+    def __eq__(self, other):
+        return self.sentences == other.sentences
 
     def SentenceAction(self):
         self.sentence_act = QAction(f"{self.title}")
@@ -86,19 +89,18 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        if sentence_lists:
-            self.current_list = copy.deepcopy(sentence_lists[0])
-        else:
-            self.current_list = SentenceList()
+        self.window = QWidget(self)
+        self.setCentralWidget(self.window)
+
+        self.settings_window = SettingsWindow()
+
+        self.GetStartList() # Get initial sentence list
+        self.CreateMenuBar() # Set up menu bar
 
         self.current_sentence = ""
         self.sentence_active = False
 
-        #self.getDefaultSentences()
-        self.CreateMenuBar()
-
-        self.num_correct_label = QLabel("Correct: " + str(user.num_correct))
-        self.num_correct_label.setAlignment(Qt.AlignRight)
+        self.CreateInfoLine()
 
         self.sentence = QLabel("Open a text file to get started or use the default sentences.")
         self.sentence.setAlignment(Qt.AlignCenter)
@@ -116,19 +118,14 @@ class MainWindow(QMainWindow):
         self.correct_or_not_label = QLabel("")
         self.correct_or_not_label.setAlignment(Qt.AlignCenter)
 
-        self.window = QWidget(self)
-        self.setCentralWidget(self.window)
-
         self.layout = QVBoxLayout()
-        self.layout.addWidget(self.num_correct_label)
+        self.layout.addLayout(self.info_layout)
         self.layout.addWidget(self.sentence)
         self.layout.addWidget(self.correct_answer_label)
         self.layout.addWidget(self.correct_or_not_label)
         self.layout.addWidget(self.input_box)
         self.layout.addWidget(self.generate_sentence_btn)
         self.window.setLayout(self.layout)
-
-        self.settings_window = SettingsWindow()
 
         self.resp_timer = QTimer()
         self.resp_timer.timeout.connect(self.ClearSentence)
@@ -137,45 +134,70 @@ class MainWindow(QMainWindow):
         self.answer_timer.timeout.connect(self.ClearAnswer)
 
     def CreateMenuBar(self):
+        """
+        Create the MainWindow menu bar with all associated submenus and actions
+        """
+
+        self.menubar = self.menuBar()
+
+        # File Menu
+        self.file_menu = self.menubar.addMenu("File")
         self.open_file_act = QAction("Open", self)
         self.open_file_act.setShortcut("Ctrl+O")
         self.open_file_act.setStatusTip("Open a file")
         self.open_file_act.triggered.connect(self.OpenFile)
-
-        self.settings_act = QAction("Settings", self)
-        self.settings_act.setShortcut("Ctrl+S")
-        self.settings_act.triggered.connect(self.OpenSettings)
-
-        self.menubar = self.menuBar()
-
-        self.file_menu = self.menubar.addMenu("File")
         self.file_menu.addAction(self.open_file_act)
 
-        self.sentence_menu = self.menubar.addMenu("Sentences")
-        #self.sentence_acts = []
+        # Sentence List Menu
+        self.sentence_menu = self.menubar.addMenu("List")
         for sentence_list in sentence_lists:
             print(sentence_list)
             self.sentence_act = sentence_list.SentenceAction()
             self.sentence_act.triggered.connect(partial(self.UseSentenceList, sentence_list))
             self.sentence_menu.addAction(self.sentence_act)
 
+        # Settings Menu
+        self.settings_act = QAction("Settings", self)
+        self.settings_act.setShortcut("Ctrl+S")
+        self.settings_act.triggered.connect(self.OpenSettings)
         self.menubar.addAction(self.settings_act)
 
+    def CreateInfoLine(self):
+        self.current_list_label = QLabel(f"Current List: {self.current_list.title}")
+        self.current_list_label.setAlignment(Qt.AlignLeft)
+
+        self.num_correct_label = QLabel("Correct: " + str(user.num_correct))
+        self.num_correct_label.setAlignment(Qt.AlignRight)
+
+        self.info_layout = QHBoxLayout()
+        self.info_layout.addWidget(self.current_list_label)
+        self.info_layout.addWidget(self.num_correct_label)
+
     def closeEvent(self, event):
+        """
+        Override the closeEvent PyQt function to update the database before closing application
+        """
+
         db.UpdateUser(connection, [user.num_correct, user.timer_duration, user.auto_start, user.show_correct_sentence])
-        duplicate = False
-        for sentence_list in sentence_lists:
-            if self.current_list.sentences == sentence_list.sentences:
-                duplicate = True
-                break
-        if(duplicate == False and self.current_list.sentences):
+        
+        # Add sentence list to database if it's not a duplicate and isn't empty
+        duplicates = [self.current_list == sentence_list for sentence_list in sentence_lists]
+        if not True in duplicates and self.current_list.sentences:
             db.AddSentenceList(connection, json.dumps(self.current_list.sentences), self.current_list.title, self.current_list.num_correct)
-        connection.close()
-        self.close()
+        
+        connection.close() # Close database connection
+        self.close() # Close application
+
+    def GetStartList(self):
+        if sentence_lists:
+            self.current_list = copy.deepcopy(sentence_lists[0])
+        else:
+            self.current_list = SentenceList()
 
     def UseSentenceList(self, sentences):
         print(sentences)
         self.current_list = sentences
+        self.current_list_label.setText(f"Current File: {self.current_list.title}")
 
     def OpenSettings(self):
         self.settings_window.show()
@@ -184,43 +206,35 @@ class MainWindow(QMainWindow):
         dialog = QFileDialog()
         fname = QFileDialog().getOpenFileName(self, 'Open file', '/Andres/Text-Files', 
             'Text Files (*.txt)')
+
         if(fname[0]):
-            duplicate = False
-            for sentence_list in sentence_lists:
-                if self.current_list.sentences == sentence_list.sentences:
-                    duplicate = True
-                    break
-            if(duplicate == False and self.current_list.sentences):
+            # Add sentence list to database if it's not a duplicate and isn't empty
+            duplicates = [self.current_list == sentence_list for sentence_list in sentence_lists]
+            if not True in duplicates and self.current_list.sentences:
                 db.AddSentenceList(connection, json.dumps(self.current_list.sentences), self.current_list.title, self.current_list.num_correct)
 
             with open(fname[0], 'r') as file:
-                duplicate = False
-                for sentence_list in sentence_lists:
-                    if fname[0] == sentence_list.title:
-                        duplicate = True
-                        break
-                if(duplicate):
-                    print("duplicate")
+                duplicates = [self.current_list.title == sentence_list.title for sentence_list in sentence_lists]
+                if True in duplicates:
                     self.current_list.sentences = file.readlines()
                     self.current_list.title = fname[0]
                 else:
-                    print("not duplicate")
                     self.current_list = SentenceList(file.readlines(), fname[0])
                     self.sentence_act = self.current_list.SentenceAction()
                     self.sentence_act.triggered.connect(partial(self.UseSentenceList, self.current_list))
                     self.sentence_menu.addAction(self.sentence_act)
-    
-    def GetDefaultSentences(self):
-        if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
-            with open(os.path.dirname(__file__) + '/default-sentences.txt', 'r') as file:
-                self.current_list.sentences = file.readlines()
+
+                self.current_list_label.setText(f"Current File: {self.current_list.title}")
 
     def GetRandomSentence(self):
         self.correct_answer_label.setText("")
-        if(len(self.current_list.sentences) > 0):
+        if self.current_list.sentences:
             self.new_sentence = random.choice(self.current_list.sentences).rstrip()
+
+            # Generate a new sentence until it is different than the previous (unless size is 1)
             while(self.new_sentence == self.current_sentence and len(self.current_list.sentences) != 1):
                 self.new_sentence = random.choice(self.current_list.sentences).rstrip()
+
             self.sentence.setText(self.new_sentence)
             self.current_sentence = self.new_sentence
             self.sentence_active = True
@@ -240,8 +254,6 @@ class MainWindow(QMainWindow):
 
     def CheckAnswer(self):
         if(self.sentence_active):
-            print(self.input_box.text().rstrip())
-            print(self.current_sentence.rstrip())
 
             if(self.input_box.text().rstrip() == self.current_sentence.rstrip() and self.sentence_active == True):
                 user.num_correct += 1
@@ -260,29 +272,31 @@ class MainWindow(QMainWindow):
             self.sentence_active = False
             self.input_box.setText("")
 
-def getDBData(db, user):
-    data = db.GetAllUsers(connection)
-    sentence_lists = db.GetAllSentenceLists(connection)
-    print(f"here: {sentence_lists}")
+def GetUserFromDB(db):
+    users = db.GetAllUsers(connection)
+    user = None
 
-    if(len(data) == 0):
+    if not users:
+        user = User()
         db.AddUser(connection, [user.num_correct, user.timer_duration, user.auto_start, user.show_correct_sentence])
     else:
-        user.num_correct = data[0][0]
-        user.timer_duration = data[0][1]
-        user.auto_start = data[0][2]
-        user.show_correct_sentence = data[0][3]
+        # Get the first user (only one user is supported right now)
+        user = User(users[0][0], users[0][1], users[0][2], users[0][3])
+    
+    return user
 
-    deserialized_lists = [] # List of SentenceList objects
+def GetListsFromDB(db):
+    sentence_lists = db.GetAllSentenceLists(connection)
+
+    deserialized_lists = []
     if not sentence_lists:
         if(os.path.exists('default-sentences.txt')):
             with open('default-sentences.txt', 'r') as file:
                 sentences = file.readlines()
-                print(f"init: {sentences}")
                 new_list = SentenceList(sentences)
                 deserialized_lists.append(new_list)
-                print(json.dumps(deserialized_lists[0].sentences))
-                db.AddSentenceList(connection, json.dumps(deserialized_lists[0].sentences), new_list.title, new_list.num_correct)
+                print(json.dumps(new_list.sentences))
+                db.AddSentenceList(connection, json.dumps(new_list.sentences), new_list.title, new_list.num_correct)
     else:
         for sentence_list in sentence_lists:
             sentences = json.loads(''.join(sentence_list[0]))
@@ -294,10 +308,11 @@ def getDBData(db, user):
 
 if __name__ == "__main__":
     app = QApplication([])
-    user = User()
     
     connection = db.CreateConnection('data.db')
-    sentence_lists = getDBData(db, user)
+    user = GetUserFromDB(db)
+    sentence_lists = GetListsFromDB(db)
+    print(user)
     print(len(sentence_lists))
 
     main = MainWindow()
