@@ -16,7 +16,9 @@ def CreateConnection(db_file):
 def CreateSentenceListsTable(connection):
     try:
         sql = '''CREATE TABLE sentenceLists (
-            sentences String
+            sentences String,
+            title String,
+            num_correct Int
         )'''
         connection.execute(sql)
     except:
@@ -34,10 +36,11 @@ def GetAllSentenceLists(connection):
     print(data)
     return data
 
-def AddSentenceList(connection, sentence_list):
+def AddSentenceList(connection, sentences, title, num_correct):
     #print(sentence_list)
     #sql = '''INSERT INTO sentenceLists VALUES (?)'''
-    connection.execute('INSERT INTO sentenceLists VALUES (?)', (sentence_list,))
+    connection.execute('INSERT INTO sentenceLists(sentences, title, num_correct) VALUES (?, ?, ?)', 
+        (sentences, title, num_correct))
     connection.commit()
 
 def CreateUsersTable(connection):

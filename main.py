@@ -3,6 +3,7 @@ import os
 import json
 import copy
 import random
+from functools import partial
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -16,9 +17,14 @@ class User():
         self.show_correct_sentence = False
 
 class SentenceList():
-    def __init__(self):
-        self.sentences = []
-        self.num_sentences = 0
+    def __init__(self, sentences = [], title = "Default", num_correct = 0):
+        self.sentences = sentences
+        self.title = title
+        self.num_correct = num_correct 
+
+    def SentenceAction(self):
+        self.sentence_act = QAction(f"{self.title}")
+        return self.sentence_act
 
 class SettingsWindow(QMainWindow):
     def __init__(self):
@@ -141,8 +147,18 @@ class MainWindow(QMainWindow):
         self.settings_act.triggered.connect(self.OpenSettings)
 
         self.menubar = self.menuBar()
+
         self.file_menu = self.menubar.addMenu("File")
         self.file_menu.addAction(self.open_file_act)
+
+        self.sentence_menu = self.menubar.addMenu("Sentences")
+        #self.sentence_acts = []
+        for sentence_list in sentence_lists:
+            print(sentence_list)
+            self.sentence_act = sentence_list.SentenceAction()
+            self.sentence_act.triggered.connect(partial(self.UseSentenceList, sentence_list))
+            self.sentence_menu.addAction(self.sentence_act)
+
         self.menubar.addAction(self.settings_act)
 
     def closeEvent(self, event):
@@ -153,10 +169,13 @@ class MainWindow(QMainWindow):
                 duplicate = True
                 break
         if(duplicate == False and self.current_list.sentences):
-            json_string = json.dumps(self.current_list.sentences)
-            db.AddSentenceList(connection, json_string)
+            db.AddSentenceList(connection, json.dumps(self.current_list.sentences), self.current_list.title, self.current_list.num_correct)
         connection.close()
         self.close()
+
+    def UseSentenceList(self, sentences):
+        print(sentences)
+        self.current_list = sentences
 
     def OpenSettings(self):
         self.settings_window.show()
@@ -172,11 +191,24 @@ class MainWindow(QMainWindow):
                     duplicate = True
                     break
             if(duplicate == False and self.current_list.sentences):
-                json_string = json.dumps(self.current_list.sentences)
-                db.AddSentenceList(connection, json_string)
+                db.AddSentenceList(connection, json.dumps(self.current_list.sentences), self.current_list.title, self.current_list.num_correct)
 
             with open(fname[0], 'r') as file:
-                self.current_list.sentences = file.readlines()
+                duplicate = False
+                for sentence_list in sentence_lists:
+                    if fname[0] == sentence_list.title:
+                        duplicate = True
+                        break
+                if(duplicate):
+                    print("duplicate")
+                    self.current_list.sentences = file.readlines()
+                    self.current_list.title = fname[0]
+                else:
+                    print("not duplicate")
+                    self.current_list = SentenceList(file.readlines(), fname[0])
+                    self.sentence_act = self.current_list.SentenceAction()
+                    self.sentence_act.triggered.connect(partial(self.UseSentenceList, self.current_list))
+                    self.sentence_menu.addAction(self.sentence_act)
     
     def GetDefaultSentences(self):
         if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
@@ -243,17 +275,18 @@ def getDBData(db, user):
 
     deserialized_lists = [] # List of SentenceList objects
     if not sentence_lists:
-        if(os.path.isfile(os.path.dirname(__file__) + '/default-sentences.txt')):
-            with open(os.path.dirname(__file__) + '/default-sentences.txt', 'r') as file:
-                new_list = SentenceList()
-                new_list.sentences = file.readlines()
+        if(os.path.exists('default-sentences.txt')):
+            with open('default-sentences.txt', 'r') as file:
+                sentences = file.readlines()
+                print(f"init: {sentences}")
+                new_list = SentenceList(sentences)
                 deserialized_lists.append(new_list)
                 print(json.dumps(deserialized_lists[0].sentences))
-                db.AddSentenceList(connection, json.dumps(deserialized_lists[0].sentences))
+                db.AddSentenceList(connection, json.dumps(deserialized_lists[0].sentences), new_list.title, new_list.num_correct)
     else:
         for sentence_list in sentence_lists:
-            new_list = SentenceList()
-            new_list.sentences = json.loads(''.join(sentence_list))
+            sentences = json.loads(''.join(sentence_list[0]))
+            new_list = SentenceList(sentences, sentence_list[1], sentence_list[2])
             deserialized_lists.append(new_list)
             print(deserialized_lists[-1])
     
