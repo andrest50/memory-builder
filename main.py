@@ -9,10 +9,20 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import db
+from settings import SettingsWindow
+
+"""
+To Do:
+- Fix timer when switching between lists
+- Save changes to list when switching between lists
+- When a file is opened, the list should appear in the list settings
+- When a list is deleted, it should no longer appear in the list menu dropdown
+- When a file is renamed, the stack item's text should change to match the new name
+"""
 
 class User():
     """Class for users"""
-    def __init__(self, num_correct = 0, timer_duration = 3,
+    def __init__(self, num_correct = 0, timer_duration = 1,
                 auto_start = False, show_correct_sentence = False):
         self.num_correct = num_correct
         self.timer_duration = timer_duration
@@ -29,28 +39,56 @@ class SentenceList():
     def __eq__(self, other):
         return self.sentences == other.sentences
 
-    def SentenceAction(self):
+    def sentence_action(self):
         self.sentence_act = QAction(f"{self.title}")
         return self.sentence_act
+
+    def rename_action_label(self):
+        self.sentence_act.setText(f"{self.title}")
+
+    def remove_action(self):
+        self.sentence_act.setParent(None)
 
 class SentenceListStackItem(QWidget):
     def __init__(self, sentence_list):
         super().__init__()
+        self.sentence_list = sentence_list
 
         self.info_layout = QFormLayout()
 
         self.list_name_label = QLabel(f"{sentence_list.title}")
         self.info_layout.addRow(self.list_name_label)
 
-        self.info_layout.addRow("Rename: ", QLineEdit())
+        self.rename_line = QLineEdit()
+        self.info_layout.addRow("Rename: ", self.rename_line)
 
         self.button_layout = QHBoxLayout()
         self.save_btn = QPushButton("Save")
+        self.save_btn.clicked.connect(self.save_changes)
         self.delete_btn = QPushButton("Delete")
+        self.delete_btn.clicked.connect(self.delete_list)
         self.button_layout.addWidget(self.save_btn)
         self.button_layout.addWidget(self.delete_btn)
         self.button_layout.setContentsMargins(0, 50, 0, 0)
         self.info_layout.addRow(self.button_layout)
+
+    def save_changes(self):
+        if self.rename_line:
+            print(self.rename_line.text())
+            self.sentence_list.title = self.rename_line.text()
+            self.sentence_list.rename_action_label()
+            self.list_name_label.setText(self.rename_line.text())
+            db.update_sentence_list(
+                connection,
+                json.dumps(self.sentence_list.sentences),
+                self.sentence_list.title,
+                self.sentence_list.num_correct)
+    
+    def delete_list(self):
+        db.delete_sentence_list(
+            connection, 
+            json.dumps(self.sentence_list.sentences))
+        self.sentence_list = None
 
 class SentenceListWindow(QMainWindow):
     def __init__(self):
@@ -96,65 +134,8 @@ class SentenceListWindow(QMainWindow):
     def display_list_settings(self, index):
         self.list_stack.setCurrentIndex(index)
 
-class SettingsWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-
-        self.resize(200, 150)
-
-        self.layout = QVBoxLayout()
-
-        self.settings_box = QFormLayout()
-        self.settings_box.setAlignment(Qt.AlignHCenter)
-
-        self.settings_label = QLabel("Settings")
-        self.settings_label.setAlignment(Qt.AlignCenter)
-        self.settings_label.setStyleSheet("font: 12px")
-        self.settings_box.addRow(self.settings_label)
-
-        self.timer_label = QLabel("Timer")
-        self.timer_input = QLineEdit()
-        self.timer_input.setText(str(user.timer_duration))
-        self.timer_input.setMaximumWidth(100)
-        self.settings_box.addRow(self.timer_label, self.timer_input)
-
-        self.auto_start_CB = QCheckBox("Auto Start")
-        if user.auto_start == True:
-            self.auto_start_CB.setChecked(True)
-        self.settings_box.addWidget(self.auto_start_CB)
-
-        self.show_correct_CB = QCheckBox("Show Correct Answer")
-        if user.show_correct_sentence == True:
-            self.show_correct_CB.setChecked(True)
-        self.settings_box.addWidget(self.show_correct_CB)
-
-        self.save_btn = QPushButton("Save")
-        self.save_btn.setMaximumWidth(100)
-        self.save_btn.clicked.connect(self.save_settings)
-        self.settings_box.addWidget(self.save_btn)
-
-        self.layout.addLayout(self.settings_box)
-
-        self.window = QWidget(self)
-        self.setCentralWidget(self.window)
-        self.window.setLayout(self.layout)
-
-    def save_settings(self):
-        """Set user settings into user object."""
-        if self.timer_input.text():
-            user.timer_duration = int(self.timer_input.text())
-
-        if self.auto_start_CB.isChecked():
-            user.auto_start = True
-        else:
-            user.auto_start = False
-
-        if self.show_correct_CB.isChecked():
-            user.show_correct_sentence = True
-        else:
-            user.show_correct_sentence = False
-
-        self.close()
+    def update_list_label(self, title):
+        self.list_stack_info.currentRow.setText(f"{title}")
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -162,9 +143,6 @@ class MainWindow(QMainWindow):
 
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
-
-        self.settings_window = SettingsWindow()
-        self.sentence_list_window = SentenceListWindow()
 
         self.get_start_list() # Get initial sentence list
         self.create_menu_bar() # Set up menu bar
@@ -226,7 +204,7 @@ class MainWindow(QMainWindow):
         self.sentence_menu.addAction(self.sentence_settings_act)
         for sentence_list in sentence_lists:
             print(sentence_list)
-            self.sentence_act = sentence_list.SentenceAction()
+            self.sentence_act = sentence_list.sentence_action()
             self.sentence_act.triggered.connect(partial(self.use_sentence_list, sentence_list))
             self.sentence_menu.addAction(self.sentence_act)
 
@@ -305,10 +283,12 @@ class MainWindow(QMainWindow):
 
     def open_settings(self):
         """Open settings window"""
+        self.settings_window = SettingsWindow(user)
         self.settings_window.show()
 
     def open_list_settings(self):
         """Open sentence list window"""
+        self.sentence_list_window = SentenceListWindow()
         self.sentence_list_window.show()
 
     def open_file(self):
@@ -350,7 +330,7 @@ class MainWindow(QMainWindow):
 
             # Generate a new sentence until it is different than the previous (unless size is 1)
             while(self.new_sentence == self.current_sentence
-                and len(self.current_list.sentences) != 1):
+                    and len(self.current_list.sentences) != 1):
                 self.new_sentence = random.choice(self.current_list.sentences).rstrip()
 
             self.sentence.setText(self.new_sentence)
@@ -377,7 +357,7 @@ class MainWindow(QMainWindow):
         if self.sentence_active:
 
             if self.input_box.text().rstrip() == self.current_sentence.rstrip()\
-                and self.sentence_active == True:
+                    and self.sentence_active == True:
                 user.num_correct += 1
                 self.current_list.num_correct += 1
                 self.num_correct_label.setText("Correct: " + str(user.num_correct))

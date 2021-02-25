@@ -46,6 +46,12 @@ def update_sentence_list(connection, sentences, title, num_correct):
     connection.execute(sql, (sentences, title, num_correct, sentences))
     connection.commit()
 
+def delete_sentence_list(connection, sentences):
+    cursor = connection.cursor()
+    sql = 'DELETE FROM sentenceLists WHERE sentences = ?'
+    connection.execute(sql, (sentences,))
+    connection.commit()
+
 def create_users_table(connection):
     try:
         sql = '''CREATE TABLE users (
