@@ -70,19 +70,26 @@ class SettingsWindow(QMainWindow):
 
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
-        self.window.setLayout(self.layout)     
+        self.window.setLayout(self.layout)
 
     def SaveSettings(self):
+        """
+        Set user settings into user object
+        """
+
         if(self.timer_input.text()):
             user.timer_duration = int(self.timer_input.text())
+
         if(self.auto_start_CB.isChecked()):
             user.auto_start = True
         else:
             user.auto_start = False
+
         if(self.show_correct_CB.isChecked()):
             user.show_correct_sentence = True
         else:
             user.show_correct_sentence = False
+
         self.close()
 
 class MainWindow(QMainWindow):
@@ -163,15 +170,29 @@ class MainWindow(QMainWindow):
         self.menubar.addAction(self.settings_act)
 
     def CreateInfoLine(self):
+        """
+        Create layout for information about current list and number of correct answers
+        """
+
+        # Single label for current list
         self.current_list_label = QLabel(f"Current List: {self.current_list.title}")
         self.current_list_label.setAlignment(Qt.AlignLeft)
 
-        self.num_correct_label = QLabel("Correct: " + str(user.num_correct))
+        # Two labels in a vertical box layout for number of correct answers
+        self.num_correct_label = QLabel("Total Correct: " + str(user.num_correct))
         self.num_correct_label.setAlignment(Qt.AlignRight)
 
+        self.num_list_correct_label = QLabel("List Correct: " + str(self.current_list.num_correct))
+        self.num_list_correct_label.setAlignment(Qt.AlignRight)
+
+        self.num_correct_layout = QVBoxLayout()
+        self.num_correct_layout.addWidget(self.num_correct_label)
+        self.num_correct_layout.addWidget(self.num_list_correct_label)
+
+        # Main info layout that contains the single label and inner layout
         self.info_layout = QHBoxLayout()
         self.info_layout.addWidget(self.current_list_label)
-        self.info_layout.addWidget(self.num_correct_label)
+        self.info_layout.addLayout(self.num_correct_layout)
 
     def closeEvent(self, event):
         """
@@ -184,6 +205,8 @@ class MainWindow(QMainWindow):
         duplicates = [self.current_list == sentence_list for sentence_list in sentence_lists]
         if not True in duplicates and self.current_list.sentences:
             db.AddSentenceList(connection, json.dumps(self.current_list.sentences), self.current_list.title, self.current_list.num_correct)
+        else:
+            db.UpdateSentenceList(connection, json.dumps(self.current_list.sentences), self.current_list.title, self.current_list.num_correct)
         
         connection.close() # Close database connection
         self.close() # Close application
@@ -194,10 +217,11 @@ class MainWindow(QMainWindow):
         else:
             self.current_list = SentenceList()
 
-    def UseSentenceList(self, sentences):
-        print(sentences)
-        self.current_list = sentences
+    def UseSentenceList(self, sentence_list):
+        print(sentence_list)
+        self.current_list = sentence_list
         self.current_list_label.setText(f"Current File: {self.current_list.title}")
+        self.num_list_correct_label.setText(f"List Correct: {self.current_list.num_correct}")
 
     def OpenSettings(self):
         self.settings_window.show()
@@ -214,7 +238,7 @@ class MainWindow(QMainWindow):
                 db.AddSentenceList(connection, json.dumps(self.current_list.sentences), self.current_list.title, self.current_list.num_correct)
 
             with open(fname[0], 'r') as file:
-                duplicates = [self.current_list.title == sentence_list.title for sentence_list in sentence_lists]
+                duplicates = [fname[0] == sentence_list.title for sentence_list in sentence_lists]
                 if True in duplicates:
                     self.current_list.sentences = file.readlines()
                     self.current_list.title = fname[0]
@@ -225,8 +249,13 @@ class MainWindow(QMainWindow):
                     self.sentence_menu.addAction(self.sentence_act)
 
                 self.current_list_label.setText(f"Current File: {self.current_list.title}")
+                self.num_list_correct_label.setText(f"List Correct: {self.current_list.num_correct}")
 
     def GetRandomSentence(self):
+        """
+        Generate a random sentence from the current sentence list
+        """
+
         self.correct_answer_label.setText("")
         if self.current_list.sentences:
             self.new_sentence = random.choice(self.current_list.sentences).rstrip()
@@ -257,7 +286,9 @@ class MainWindow(QMainWindow):
 
             if(self.input_box.text().rstrip() == self.current_sentence.rstrip() and self.sentence_active == True):
                 user.num_correct += 1
+                self.current_list.num_correct += 1
                 self.num_correct_label.setText("Correct: " + str(user.num_correct))
+                self.num_list_correct_label.setText(f"List Correct: {self.current_list.num_correct}")
                 self.correct_or_not_label.setText("Correct!")
             else:
                 self.correct_or_not_label.setText("Incorrect!")
@@ -290,8 +321,8 @@ def GetListsFromDB(db):
 
     deserialized_lists = []
     if not sentence_lists:
-        if(os.path.exists('default-sentences.txt')):
-            with open('default-sentences.txt', 'r') as file:
+        if(os.path.exists('default_sentences.txt')):
+            with open('default_sentences.txt', 'r') as file:
                 sentences = file.readlines()
                 new_list = SentenceList(sentences)
                 deserialized_lists.append(new_list)

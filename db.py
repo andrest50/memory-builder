@@ -43,6 +43,13 @@ def AddSentenceList(connection, sentences, title, num_correct):
         (sentences, title, num_correct))
     connection.commit()
 
+def UpdateSentenceList(connection, sentences, title, num_correct):
+    cursor = connection.cursor()
+    #print(cursor.lastrowid)
+    sql = '''UPDATE sentenceLists SET sentences = ?, title = ?, num_correct = ? WHERE sentences = ?'''
+    connection.execute(sql, (sentences, title, num_correct, sentences))
+    connection.commit()
+
 def CreateUsersTable(connection):
     try:
         sql = '''CREATE TABLE users (
