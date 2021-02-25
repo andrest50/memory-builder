@@ -33,7 +33,7 @@ def GetAllSentenceLists(connection):
     cursor = connection.cursor()
     cursor.execute('SELECT * FROM sentenceLists')
     data = cursor.fetchall()
-    print(data)
+    #print(data)
     return data
 
 def AddSentenceList(connection, sentences, title, num_correct):

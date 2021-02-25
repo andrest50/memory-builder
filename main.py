@@ -29,11 +29,75 @@ class SentenceList():
         self.sentence_act = QAction(f"{self.title}")
         return self.sentence_act
 
-class SettingsWindow(QMainWindow):
+class SentenceListStackItem(QWidget):
+    def __init__(self, sentence_list):
+        super().__init__()
+
+        self.info_layout = QFormLayout()
+            
+        self.list_name_label = QLabel(f"{sentence_list.title}")
+        self.info_layout.addRow(self.list_name_label)
+        
+        self.info_layout.addRow("Rename: ", QLineEdit())
+
+        self.button_layout = QHBoxLayout()
+        self.save_btn = QPushButton("Save")
+        self.delete_btn = QPushButton("Delete")
+        self.button_layout.addWidget(self.save_btn)
+        self.button_layout.addWidget(self.delete_btn)
+        self.button_layout.setContentsMargins(0, 50, 0, 0)
+        #self.button_layout.setAlignment(Qt.AlignBottom)
+        self.info_layout.addRow(self.button_layout)
+
+class SentenceListWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.resize(400, 240)
+
+        self.layout = QHBoxLayout()
+
+        self.select_layout = QHBoxLayout()
+
+        self.list_stack_info = QListWidget()
+        self.list_stack = QStackedWidget(self)
+        
+        self.StackSentenceLists()
+
+        self.select_layout.addWidget(self.list_stack_info)
+        self.select_layout.addWidget(self.list_stack)
+
+        self.layout.addLayout(self.select_layout)
+
+        self.list_stack_info.currentRowChanged.connect(self.DisplayListSettings)
+
+        #self.settings_label = QLabel("Sentence Lists")
+        #self.settings_label.setStyleSheet("font: 12px")
+        #self.layout.addWidget(self.settings_label)
+
+        self.window = QWidget(self)
+        self.setCentralWidget(self.window)
+        self.window.setLayout(self.layout)
+
+    def StackSentenceLists(self):
+        self.stack = []
+
+        for index, sentence_list in enumerate(sentence_lists):
+            self.stack_item = SentenceListStackItem(sentence_list)
+            print(self.stack_item.list_name_label.text())
+            self.list_stack_info.insertItem(index, f"{sentence_list.title}") 
+            self.stack.append(self.stack_item)
+            self.stack[index].setLayout(self.stack_item.info_layout)
+            self.list_stack.addWidget(self.stack[index])
+
+    def DisplayListSettings(self, index):
+       self.list_stack.setCurrentIndex(index) 
+
+class SettingsWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.resize(200, 150)
 
         self.layout = QVBoxLayout()
 
@@ -100,6 +164,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.window)
 
         self.settings_window = SettingsWindow()
+        self.sentence_list_window = SentenceListWindow()
 
         self.GetStartList() # Get initial sentence list
         self.CreateMenuBar() # Set up menu bar
@@ -157,6 +222,9 @@ class MainWindow(QMainWindow):
 
         # Sentence List Menu
         self.sentence_menu = self.menubar.addMenu("List")
+        self.sentence_settings_act = QAction("Settings", self)
+        self.sentence_settings_act.triggered.connect(self.OpenListSettings)
+        self.sentence_menu.addAction(self.sentence_settings_act)
         for sentence_list in sentence_lists:
             print(sentence_list)
             self.sentence_act = sentence_list.SentenceAction()
@@ -179,13 +247,15 @@ class MainWindow(QMainWindow):
         self.current_list_label.setAlignment(Qt.AlignLeft)
 
         # Two labels in a vertical box layout for number of correct answers
-        self.num_correct_label = QLabel("Total Correct: " + str(user.num_correct))
+        self.num_correct_label = QLabel(f"Total Correct: {str(user.num_correct)}")
         self.num_correct_label.setAlignment(Qt.AlignRight)
 
-        self.num_list_correct_label = QLabel("List Correct: " + str(self.current_list.num_correct))
+        self.num_list_correct_label = QLabel(f"List Correct: {str(self.current_list.num_correct)}")
         self.num_list_correct_label.setAlignment(Qt.AlignRight)
 
         self.num_correct_layout = QVBoxLayout()
+        #self.num_correct_layout.setContentsMargins(0, 0, 0, 0)
+        #self.num_correct_layout.setSpacing(0)
         self.num_correct_layout.addWidget(self.num_correct_label)
         self.num_correct_layout.addWidget(self.num_list_correct_label)
 
@@ -225,6 +295,9 @@ class MainWindow(QMainWindow):
 
     def OpenSettings(self):
         self.settings_window.show()
+
+    def OpenListSettings(self):
+        self.sentence_list_window.show()
 
     def OpenFile(self):
         dialog = QFileDialog()
@@ -326,25 +399,26 @@ def GetListsFromDB(db):
                 sentences = file.readlines()
                 new_list = SentenceList(sentences)
                 deserialized_lists.append(new_list)
-                print(json.dumps(new_list.sentences))
+                #print(json.dumps(new_list.sentences))
                 db.AddSentenceList(connection, json.dumps(new_list.sentences), new_list.title, new_list.num_correct)
     else:
         for sentence_list in sentence_lists:
             sentences = json.loads(''.join(sentence_list[0]))
             new_list = SentenceList(sentences, sentence_list[1], sentence_list[2])
             deserialized_lists.append(new_list)
-            print(deserialized_lists[-1])
+            #print(deserialized_lists[-1])
     
     return deserialized_lists
 
 if __name__ == "__main__":
     app = QApplication([])
+    app.setStyleSheet("QLabel{font-size: 8pt;}")
     
     connection = db.CreateConnection('data.db')
     user = GetUserFromDB(db)
     sentence_lists = GetListsFromDB(db)
-    print(user)
-    print(len(sentence_lists))
+    #print(user)
+    #print(len(sentence_lists))
 
     main = MainWindow()
     main.setWindowTitle("Memory Builder")
