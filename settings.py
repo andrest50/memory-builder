@@ -28,15 +28,15 @@ class SettingsWindow(QMainWindow):
         self.timer_input.setMaximumWidth(100)
         self.settings_box.addRow(self.timer_label, self.timer_input)
 
-        self.auto_start_CB = QCheckBox("Auto Start")
-        if user.auto_start == True:
-            self.auto_start_CB.setChecked(True)
-        self.settings_box.addWidget(self.auto_start_CB)
+        self.auto_start_cb = QCheckBox("Auto Start")
+        if user.auto_start is True:
+            self.auto_start_cb.setChecked(True)
+        self.settings_box.addWidget(self.auto_start_cb)
 
-        self.show_correct_CB = QCheckBox("Show Correct Answer")
-        if user.show_correct_sentence == True:
-            self.show_correct_CB.setChecked(True)
-        self.settings_box.addWidget(self.show_correct_CB)
+        self.show_correct_cb = QCheckBox("Show Correct Answer")
+        if user.show_correct_sentence is True:
+            self.show_correct_cb.setChecked(True)
+        self.settings_box.addWidget(self.show_correct_cb)
 
         self.save_btn = QPushButton("Save")
         self.save_btn.setMaximumWidth(100)
@@ -49,17 +49,17 @@ class SettingsWindow(QMainWindow):
         self.setCentralWidget(self.window)
         self.window.setLayout(self.layout)
 
-    def save_settings(self, user):
+    def save_settings(self):
         """Set user settings into user object."""
         if self.timer_input.text():
             self.user.timer_duration = int(self.timer_input.text())
 
-        if self.auto_start_CB.isChecked():
+        if self.auto_start_cb.isChecked():
             self.user.auto_start = True
         else:
             self.user.auto_start = False
 
-        if self.show_correct_CB.isChecked():
+        if self.show_correct_cb.isChecked():
             self.user.show_correct_sentence = True
         else:
             self.user.show_correct_sentence = False

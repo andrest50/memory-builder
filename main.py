@@ -2,7 +2,6 @@
 import sys
 import os
 import json
-import copy
 import random
 from functools import partial
 from PyQt5.QtCore import *
@@ -13,15 +12,13 @@ from settings import SettingsWindow
 
 """
 To Do:
-- Fix timer when switching between lists
-- Save changes to list when switching between lists
 - When a file is opened, the list should appear in the list settings
 - When a list is deleted, it should no longer appear in the list menu dropdown
 - When a file is renamed, the stack item's text should change to match the new name
 """
 
 class User():
-    """Class for users"""
+    """For user-specific statistics and settings"""
     def __init__(self, num_correct = 0, timer_duration = 1,
                 auto_start = False, show_correct_sentence = False):
         self.num_correct = num_correct
@@ -30,7 +27,7 @@ class User():
         self.show_correct_sentence = show_correct_sentence
 
 class SentenceList():
-    """Class for lists of sentences imported from a text file"""
+    """For lists of sentences imported from a text file and stored in the database"""
     def __init__(self, sentences = None, title = "Default", num_correct = 0):
         self.sentences = sentences
         self.title = title
@@ -50,6 +47,7 @@ class SentenceList():
         self.sentence_act.setParent(None)
 
 class SentenceListStackItem(QWidget):
+    """List widget item for each sentence list"""
     def __init__(self, sentence_list):
         super().__init__()
         self.sentence_list = sentence_list
@@ -73,6 +71,7 @@ class SentenceListStackItem(QWidget):
         self.info_layout.addRow(self.button_layout)
 
     def save_changes(self):
+        """Save changes made to sentence list settings"""
         if self.rename_line:
             print(self.rename_line.text())
             self.sentence_list.title = self.rename_line.text()
@@ -83,14 +82,16 @@ class SentenceListStackItem(QWidget):
                 json.dumps(self.sentence_list.sentences),
                 self.sentence_list.title,
                 self.sentence_list.num_correct)
-    
+ 
     def delete_list(self):
+        """Delete a sentence_list, which deletes it from the database"""
         db.delete_sentence_list(
-            connection, 
+            connection,
             json.dumps(self.sentence_list.sentences))
         self.sentence_list = None
 
 class SentenceListWindow(QMainWindow):
+    """Main window for sentence list settings"""
     def __init__(self):
         super().__init__()
 
@@ -112,15 +113,12 @@ class SentenceListWindow(QMainWindow):
 
         self.list_stack_info.currentRowChanged.connect(self.display_list_settings)
 
-        #self.settings_label = QLabel("Sentence Lists")
-        #self.settings_label.setStyleSheet("font: 12px")
-        #self.layout.addWidget(self.settings_label)
-
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
         self.window.setLayout(self.layout)
 
     def stack_sentence_lists(self):
+        """Set up sentence list stack and associated settings"""
         self.stack = []
 
         for index, sentence_list in enumerate(sentence_lists):
@@ -132,10 +130,12 @@ class SentenceListWindow(QMainWindow):
             self.list_stack.addWidget(self.stack[index])
 
     def display_list_settings(self, index):
+        """Display the current stack item's settings"""
         self.list_stack.setCurrentIndex(index)
 
     def update_list_label(self, title):
-        self.list_stack_info.currentRow.setText(f"{title}")
+        #self.list_stack_info.currentRow.setText(f"{title}")
+        pass
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -181,7 +181,7 @@ class MainWindow(QMainWindow):
         self.resp_timer.timeout.connect(self.clear_sentence)
 
         self.answer_timer = QTimer()
-        self.answer_timer.timeout.connect(self.clear_answer)
+        self.answer_timer.timeout.connect(partial(self.clear_answer, user.auto_start))
 
     def create_menu_bar(self):
         """
@@ -271,15 +271,31 @@ class MainWindow(QMainWindow):
     def get_start_list(self):
         """Get first sentence list"""
         if sentence_lists:
-            self.current_list = copy.deepcopy(sentence_lists[0])
+            self.current_list = sentence_lists[0]
         else:
             self.current_list = SentenceList()
 
+    def print_all_lists(self):
+        for sentence_list in sentence_lists:
+            print(sentence_list.sentences)
+            print(sentence_list.title)
+            print(sentence_list.num_correct)
+
     def use_sentence_list(self, sentence_list):
         """Update the current sentence list and related labels"""
+        print(f"{self.current_list.title} {self.current_list.num_correct}")
+        self.print_all_lists()
+        db.update_sentence_list(
+                connection,
+                json.dumps(self.current_list.sentences),
+                self.current_list.title,
+                self.current_list.num_correct)
         self.current_list = sentence_list
         self.current_list_label.setText(f"Current File: {self.current_list.title}")
         self.num_list_correct_label.setText(f"List Correct: {self.current_list.num_correct}")
+        #time.sleep(0.5)
+        self.clear_sentence()
+        self.clear_answer(False)
 
     def open_settings(self):
         """Open settings window"""
@@ -293,7 +309,6 @@ class MainWindow(QMainWindow):
 
     def open_file(self):
         """Open a text file and extract the lines as sentences"""
-        dialog = QFileDialog()
         fname = QFileDialog().getOpenFileName(self, 'Open file', '/Andres/Text-Files',
             'Text Files (*.txt)')
 
@@ -344,12 +359,12 @@ class MainWindow(QMainWindow):
         self.sentence.setText("Type the sentence and hit Enter.")
         self.resp_timer.stop()
 
-    def clear_answer(self):
+    def clear_answer(self, auto_start):
         """Hide the answer label (correct or incorrect)"""
         self.correct_or_not_label.setText("")
         self.sentence.setText("Generate a new sentence.")
         self.answer_timer.stop()
-        if user.auto_start == True:
+        if auto_start is True:
             self.get_random_sentence()
 
     def check_answer(self):
@@ -357,7 +372,7 @@ class MainWindow(QMainWindow):
         if self.sentence_active:
 
             if self.input_box.text().rstrip() == self.current_sentence.rstrip()\
-                    and self.sentence_active == True:
+                    and self.sentence_active is True:
                 user.num_correct += 1
                 self.current_list.num_correct += 1
                 self.num_correct_label.setText("Correct: " + str(user.num_correct))

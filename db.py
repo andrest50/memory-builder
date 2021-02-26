@@ -1,4 +1,3 @@
-import os
 import sqlite3
 from sqlite3 import Error
 
@@ -41,13 +40,11 @@ def add_sentence_list(connection, sentences, title, num_correct):
     connection.commit()
 
 def update_sentence_list(connection, sentences, title, num_correct):
-    cursor = connection.cursor()
     sql = '''UPDATE sentenceLists SET sentences = ?, title = ?, num_correct = ? WHERE sentences = ?'''
     connection.execute(sql, (sentences, title, num_correct, sentences))
     connection.commit()
 
 def delete_sentence_list(connection, sentences):
-    cursor = connection.cursor()
     sql = 'DELETE FROM sentenceLists WHERE sentences = ?'
     connection.execute(sql, (sentences,))
     connection.commit()
@@ -81,7 +78,6 @@ def add_user(connection, user):
     connection.commit()
 
 def update_user(connection, user):
-    cursor = connection.cursor()
     sql = '''UPDATE users SET numCorrect = ?, timerDuration = ?, autoStart = ?, showCorrectAnswer = ?'''
     connection.execute(sql, user)
     connection.commit()
