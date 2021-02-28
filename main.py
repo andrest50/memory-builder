@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import db
 from settings import SettingsWindow
+from sentence_list import SentenceListWindow, SentenceListStackItem, SentenceList
+from controller import Controller
 
 """
 To Do:
@@ -16,36 +18,12 @@ To Do:
 - Add default folder to open in user settings
 """
 
-class Controller():
-    def __init__(self, sentence_lists):
-        super().__init__()
-
-        self.sentence_lists = sentence_lists
-        self.current_list = None
-        self.get_start_list() # Get initial sentence list
-        self.deleted_lists = []
-        self.current_sentence = ""
-        self.sentence_active = False
-
-    def get_start_list(self):
-        """Get first sentence list"""
-        if self.sentence_lists:
-            self.current_list = self.sentence_lists[0]
-        else:
-            self.current_list = SentenceList()
-
-    def print_all_lists(self):
-        """For testing purposes to see all sentence lists """
-        for sentence_list in self.sentence_lists:
-            print(sentence_list.sentences)
-            print(sentence_list.title)
-            print(sentence_list.num_correct)
-
 class MainWindow(QMainWindow):
     """Main application window"""
-    def __init__(self, controller=None):
+    def __init__(self, user=None, controller=None):
         super().__init__()
 
+        self.user = user
         self.controller = controller
 
         self.window = QWidget(self)
@@ -85,7 +63,7 @@ class MainWindow(QMainWindow):
         self.resp_timer.timeout.connect(self.clear_sentence)
 
         self.answer_timer = QTimer()
-        self.answer_timer.timeout.connect(partial(self.clear_answer, user.auto_start))
+        self.answer_timer.timeout.connect(self.clear_answer)
 
     def create_menu_bar(self):
         """
@@ -128,7 +106,7 @@ class MainWindow(QMainWindow):
         self.current_list_label.setAlignment(Qt.AlignLeft)
 
         # Two labels in a vertical box layout for number of correct answers
-        self.num_correct_label = QLabel(f"Total Correct: {str(user.num_correct)}")
+        self.num_correct_label = QLabel(f"Total Correct: {str(self.user.num_correct)}")
         self.num_correct_label.setAlignment(Qt.AlignRight)
 
         self.num_list_correct_label = QLabel(f"List Correct: {str(self.controller.current_list.num_correct)}")
@@ -148,10 +126,10 @@ class MainWindow(QMainWindow):
         Override the closeEvent PyQt function to update the database before closing application.
         """
         db.update_user(connection, [
-                user.num_correct,
-                user.timer_duration,
-                user.auto_start,
-                user.show_correct_sentence])
+                self.user.num_correct,
+                self.user.timer_duration,
+                self.user.auto_start,
+                self.user.show_correct_sentence])
 
         # Add sentence list to database if it's not a duplicate and isn't empty
         all_sentence_lists = db.get_all_sentence_lists(connection)
@@ -188,7 +166,7 @@ class MainWindow(QMainWindow):
 
     def open_settings(self):
         """Open settings window"""
-        self.settings_window = SettingsWindow(user)
+        self.settings_window = SettingsWindow(self.user)
         self.settings_window.show()
 
     def open_list_settings(self):
@@ -223,11 +201,9 @@ class MainWindow(QMainWindow):
                     self.sentence_act = QAction(f"{self.controller.current_list.title}")
                     self.sentence_act.triggered.connect(
                         partial(self.use_sentence_list, self.controller.current_list))
-                    print(len(self.menu_actions))
                     self.menu_actions.append(self.sentence_act)
                     self.sentence_menu.addAction(self.sentence_act)
                     self.controller.sentence_lists.append(self.controller.current_list)
-                    print(self.controller.current_list.title)
 
                 self.current_list_label.setText(f"Current List: {self.controller.current_list.title}")
                 self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
@@ -247,7 +223,7 @@ class MainWindow(QMainWindow):
             self.controller.current_sentence = self.new_sentence
             self.controller.sentence_active = True
             self.input_box.setFocus()
-            self.resp_timer.start(user.timer_duration * 1000)
+            self.resp_timer.start(self.user.timer_duration * 1000)
 
     def clear_sentence(self):
         """Hide the current sentence"""
@@ -267,12 +243,14 @@ class MainWindow(QMainWindow):
         """Clear the text for the current list label"""
         self.current_list_label.setText("Current List: ")
 
-    def clear_answer(self, auto_start):
+    def clear_answer(self, auto_start=None):
         """Hide the answer label (correct or incorrect)"""
+        if auto_start is None:
+            auto_start = self.user.auto_start
         self.correct_or_not_label.setText("")
         self.sentence_label.setText("Generate a new sentence.")
         self.answer_timer.stop()
-        if auto_start is True:
+        if bool(auto_start) is True:
             self.get_random_sentence()
 
     def check_answer(self):
@@ -280,15 +258,15 @@ class MainWindow(QMainWindow):
         if self.controller.sentence_active:
 
             if self.input_box.text().rstrip() == self.controller.current_sentence.rstrip():
-                user.num_correct += 1
+                self.user.num_correct += 1
                 self.controller.current_list.num_correct += 1
-                self.num_correct_label.setText("Correct: " + str(user.num_correct))
+                self.num_correct_label.setText("Correct: " + str(self.user.num_correct))
                 self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
                 self.correct_or_not_label.setText("Correct!")
             else:
                 self.correct_or_not_label.setText("Incorrect!")
 
-            if user.show_correct_sentence:
+            if self.user.show_correct_sentence:
                 self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
 
             if self.sentence_label.text() != "Type the sentence and hit Enter.":
@@ -300,137 +278,6 @@ class MainWindow(QMainWindow):
 
         else:
             self.get_random_sentence()
-
-class SentenceListWindow(QMainWindow):
-    """Main window for sentence list settings"""
-    def __init__(self, parent):
-        super().__init__()
-
-        self.parent = parent
-
-        self.resize(400, 240)
-
-        self.layout = QHBoxLayout()
-        self.select_layout = QHBoxLayout()
-
-        self.list_stack_info = QListWidget()
-        self.list_stack = QStackedWidget(self)
-
-        self.stack_sentence_lists()
-
-        self.select_layout.addWidget(self.list_stack_info)
-        self.select_layout.addWidget(self.list_stack)
-
-        self.layout.addLayout(self.select_layout)
-
-        self.list_stack_info.currentRowChanged.connect(self.display_list_settings)
-
-        self.window = QWidget(self)
-        self.setCentralWidget(self.window)
-        self.window.setLayout(self.layout)
-
-    def closeEvent(self, event):
-        pass
-
-    def stack_sentence_lists(self):
-        """Set up sentence list stack and associated settings"""
-        for index, sentence_list in enumerate(sentence_lists):
-            self.stack_item = SentenceListStackItem(self, sentence_list, index)
-            self.list_stack_info.insertItem(index, f"{sentence_list.title}")
-            self.stack_item.setLayout(self.stack_item.info_layout)
-            self.list_stack.addWidget(self.stack_item)
-
-    def display_list_settings(self, index):
-        """Display the current stack item's settings"""
-        self.list_stack.setCurrentIndex(index)
-
-class SentenceListStackItem(QWidget):
-    """List widget item for each sentence list"""
-    def __init__(self, parent, sentence_list, index):
-        super().__init__()
-
-        self.parent = parent
-        self.sentence_list = sentence_list
-        self.index = index
-
-        self.info_layout = QFormLayout()
-
-        self.list_name_label = QLabel(f"{sentence_list.title}")
-        self.info_layout.addRow(self.list_name_label)
-
-        self.rename_line = QLineEdit()
-        self.info_layout.addRow("Rename: ", self.rename_line)
-
-        self.button_layout = QHBoxLayout()
-
-        self.save_btn = QPushButton("Save")
-        self.save_btn.clicked.connect(self.save_changes)
-
-        self.delete_btn = QPushButton("Delete")
-        self.delete_btn.clicked.connect(self.delete_list)
-
-        self.button_layout.addWidget(self.save_btn)
-        self.button_layout.addWidget(self.delete_btn)
-        self.button_layout.setContentsMargins(0, 50, 0, 0)
-
-        self.info_layout.addRow(self.button_layout)
-
-    def save_changes(self):
-        """Save changes made to sentence list settings"""
-        if self.rename_line:
-            self.sentence_list.title = self.rename_line.text()
-            action_idx = sentence_lists.index(self.sentence_list)
-            
-            try:
-                self.parent.parent.menu_actions[action_idx].setText(self.sentence_list.title)
-            except ValueError:
-                print("Not found")
-            
-            self.list_name_label.setText(self.rename_line.text())
-            self.parent.list_stack_info.item(action_idx).setText(self.rename_line.text())
-            self.parent.parent.current_list_label.setText(f"Current List: {self.rename_line.text()}")
-            self.rename_line.setText("")
-            
-            db.update_sentence_list(
-                connection,
-                json.dumps(self.sentence_list.sentences),
-                self.sentence_list.title,
-                self.sentence_list.num_correct)
-
-    def delete_list(self):
-        """Delete a sentence_list, which deletes it from the database"""
-        if not self.sentence_list:
-            return
-
-        db.delete_sentence_list(connection, json.dumps(self.sentence_list.sentences))
-        controller.deleted_lists.append(self.sentence_list)
-        action_idx = sentence_lists.index(self.sentence_list)
-       
-        try:
-            self.parent.parent.sentence_menu.removeAction(self.parent.parent.menu_actions[action_idx])
-            self.parent.parent.menu_actions.pop(action_idx)
-        except ValueError:
-            print("Not found")
-       
-        sentence_lists.remove(self.sentence_list)
-        if controller.current_list == self.sentence_list:
-            if sentence_lists:
-                self.parent.parent.use_sentence_list(sentence_lists[0])
-            else:
-                self.parent.parent.no_lists_available()
-
-        #self.sentence_list = None
-        self.parent.list_stack_info.takeItem(self.index)
-
-class SentenceList():
-    """For lists of sentences imported from a text file and stored in the database"""
-    def __init__(self, sentences=None, title="Default", num_correct=0):
-        self.sentences = sentences
-        self.title = title
-        self.num_correct = num_correct
-
-    def __eq__(self, other):
-        return self.sentences == other.sentences
 
 class User():
     """For user-specific statistics and settings"""
@@ -448,7 +295,6 @@ def get_user_from_db(db):
 
     if not users:
         current_user = User()
-        print("here")
         db.add_user(connection, [
             current_user.num_correct,
             current_user.timer_duration,
@@ -457,7 +303,6 @@ def get_user_from_db(db):
     else:
         # Get the first user (only one user is supported right now)
         current_user = User(users[0][0], users[0][1], users[0][2], bool(users[0][3]))
-        print("here2")
         print(current_user.show_correct_sentence)
 
     return current_user
@@ -495,7 +340,7 @@ if __name__ == "__main__":
 
     controller = Controller(sentence_lists)
 
-    main = MainWindow(controller)
+    main = MainWindow(user, controller)
     main.setWindowTitle("Memory Builder")
     main.resize(480, 320)
     main.show()

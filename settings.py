@@ -29,7 +29,7 @@ class SettingsWindow(QMainWindow):
         self.settings_box.addRow(self.timer_label, self.timer_input)
 
         self.auto_start_cb = QCheckBox("Auto Start")
-        if user.auto_start is True:
+        if bool(user.auto_start) is True:
             self.auto_start_cb.setChecked(True)
         self.settings_box.addWidget(self.auto_start_cb)
 
