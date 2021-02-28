@@ -19,11 +19,16 @@ To Do:
 
 class MainWindow(QMainWindow):
     """Main application window"""
-    def __init__(self):
+    def __init__(self, sentence_lists):
         super().__init__()
+
+        self.sentence_lists = sentence_lists
+        self.deleted_lists = []
 
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
+
+        self.menu_actions = []
 
         self.get_start_list() # Get initial sentence list
         self.create_menu_bar() # Set up menu bar
@@ -84,10 +89,11 @@ class MainWindow(QMainWindow):
         self.sentence_settings_act.setShortcut("Ctrl+L")
         self.sentence_settings_act.triggered.connect(self.open_list_settings)
         self.sentence_menu.addAction(self.sentence_settings_act)
-        for sentence_list in sentence_lists:
+        for sentence_list in self.sentence_lists:
             print(sentence_list)
-            self.sentence_act = sentence_list.sentence_action()
+            self.sentence_act = QAction(f"{sentence_list.title}")
             self.sentence_act.triggered.connect(partial(self.use_sentence_list, sentence_list))
+            self.menu_actions.append(self.sentence_act)
             self.sentence_menu.addAction(self.sentence_act)
 
         # Settings Menu
@@ -133,8 +139,11 @@ class MainWindow(QMainWindow):
                 user.show_correct_sentence])
 
         # Add sentence list to database if it's not a duplicate and isn't empty
-        duplicates = [self.current_list == sentence_list for sentence_list in sentence_lists]
-        if not True in duplicates and self.current_list.sentences:
+        print(self.current_list)
+        all_sentence_lists = db.get_all_sentence_lists(connection)
+        duplicates = [self.current_list.sentences == json.loads(''.join(sentence_list[0])) for sentence_list in all_sentence_lists]
+        print(duplicates)
+        if not True in duplicates and self.current_list.sentences and self.current_list not in self.deleted_lists:
             db.add_sentence_list(
                 connection,
                 json.dumps(self.current_list.sentences),
@@ -152,13 +161,13 @@ class MainWindow(QMainWindow):
 
     def get_start_list(self):
         """Get first sentence list"""
-        if sentence_lists:
-            self.current_list = sentence_lists[0]
+        if self.sentence_lists:
+            self.current_list = self.sentence_lists[0]
         else:
             self.current_list = SentenceList()
 
     def print_all_lists(self):
-        for sentence_list in sentence_lists:
+        for sentence_list in self.sentence_lists:
             print(sentence_list.sentences)
             print(sentence_list.title)
             print(sentence_list.num_correct)
@@ -173,7 +182,7 @@ class MainWindow(QMainWindow):
                 self.current_list.title,
                 self.current_list.num_correct)
         self.current_list = sentence_list
-        self.current_list_label.setText(f"Current File: {self.current_list.title}")
+        self.current_list_label.setText(f"Current List: {self.current_list.title}")
         self.num_list_correct_label.setText(f"List Correct: {self.current_list.num_correct}")
         #time.sleep(0.5)
         self.clear_sentence()
@@ -196,7 +205,9 @@ class MainWindow(QMainWindow):
 
         if fname[0]:
             # Add sentence list to database if it's not a duplicate and isn't empty
-            duplicates = [self.current_list == sentence_list for sentence_list in sentence_lists]
+            all_sentence_lists = db.get_all_sentence_lists(connection)
+            duplicates = [self.current_list.sentences == json.loads(''.join(sentence_list[0])) for sentence_list in all_sentence_lists]
+            print(duplicates)
             if not True in duplicates and self.current_list.sentences:
                 db.add_sentence_list(
                     connection,
@@ -205,18 +216,21 @@ class MainWindow(QMainWindow):
                     self.current_list.num_correct)
 
             with open(fname[0], 'r') as file:
-                duplicates = [fname[0] == sentence_list.title for sentence_list in sentence_lists]
-                if True in duplicates:
+                duplicates = [fname[0] == sentence_list.title for sentence_list in self.sentence_lists]
+                if sum(duplicates) <= 1 in duplicates:
                     self.current_list.sentences = file.readlines()
                     self.current_list.title = fname[0]
                 else:
                     self.current_list = SentenceList(file.readlines(), fname[0])
-                    self.sentence_act = self.current_list.sentence_action()
+                    self.sentence_act = QAction(f"{self.current_list.title}")
                     self.sentence_act.triggered.connect(
                         partial(self.use_sentence_list, self.current_list))
+                    self.menu_actions.append(self.sentence_act)
                     self.sentence_menu.addAction(self.sentence_act)
+                    self.sentence_lists.append(self.current_list)
+                    print(self.current_list.title)
 
-                self.current_list_label.setText(f"Current File: {self.current_list.title}")
+                self.current_list_label.setText(f"Current List: {self.current_list.title}")
                 self.num_list_correct_label.setText(f"List Correct: {self.current_list.num_correct}")
 
     def get_random_sentence(self):
@@ -240,6 +254,17 @@ class MainWindow(QMainWindow):
         """Hide the current sentence"""
         self.sentence.setText("Type the sentence and hit Enter.")
         self.resp_timer.stop()
+
+    def no_lists_available(self):
+        self.clear_current_list_label()
+        self.sentence.setText("Type the sentence and hit Enter.")
+        self.correct_or_not_label.setText("")
+        self.sentence.setText("Generate a new sentence.")
+        self.num_list_correct_label.setText("List Correct: 0")
+
+    def clear_current_list_label(self):
+        """Clear the text for the current list label"""
+        self.current_list_label.setText("Current List: ")
 
     def clear_answer(self, auto_start):
         """Hide the answer label (correct or incorrect)"""
@@ -276,10 +301,12 @@ class MainWindow(QMainWindow):
         else:
             self.get_random_sentence()
 
-class SentenceListWindow(MainWindow):
+class SentenceListWindow(QMainWindow):
     """Main window for sentence list settings"""
     def __init__(self, parent):
         super().__init__()
+
+        self.parent = parent
 
         self.resize(400, 240)
 
@@ -311,7 +338,7 @@ class SentenceListWindow(MainWindow):
         self.stack = []
 
         for index, sentence_list in enumerate(sentence_lists):
-            self.stack_item = SentenceListStackItem(sentence_list)
+            self.stack_item = SentenceListStackItem(self, sentence_list, index)
             print(self.stack_item.list_name_label.text())
             self.list_stack_info.insertItem(index, f"{sentence_list.title}")
             self.stack.append(self.stack_item)
@@ -328,9 +355,12 @@ class SentenceListWindow(MainWindow):
 
 class SentenceListStackItem(QWidget):
     """List widget item for each sentence list"""
-    def __init__(self, sentence_list):
+    def __init__(self, parent, sentence_list, index):
         super().__init__()
+
+        self.parent = parent
         self.sentence_list = sentence_list
+        self.index = index
 
         self.info_layout = QFormLayout()
 
@@ -355,8 +385,12 @@ class SentenceListStackItem(QWidget):
         if self.rename_line:
             print(self.rename_line.text())
             self.sentence_list.title = self.rename_line.text()
-            self.sentence_list.rename_action_label()
+            action_idx = sentence_lists.index(self.sentence_list)
+            if action_idx:
+                self.parent.parent.menu_actions[action_idx].setText(self.sentence_list.title)
             self.list_name_label.setText(self.rename_line.text())
+            self.parent.list_stack_info.item(action_idx).setText(self.rename_line.text())
+            self.rename_line.setText("")
             db.update_sentence_list(
                 connection,
                 json.dumps(self.sentence_list.sentences),
@@ -365,30 +399,35 @@ class SentenceListStackItem(QWidget):
  
     def delete_list(self):
         """Delete a sentence_list, which deletes it from the database"""
+        if not self.sentence_list:
+            return
         db.delete_sentence_list(
             connection,
             json.dumps(self.sentence_list.sentences))
+        action_idx = sentence_lists.index(self.sentence_list)
+        self.parent.parent.deleted_lists.append(self.sentence_list)
+        try:
+            self.parent.parent.sentence_menu.removeAction(self.parent.parent.menu_actions[action_idx])
+        except ValueError:
+            print("Not found")
+        sentence_lists.remove(self.sentence_list)
+        if self.parent.parent.current_list == self.sentence_list:
+            if sentence_lists:
+                self.parent.parent.use_sentence_list(sentence_lists[0])
+            else:
+                self.parent.parent.no_lists_available()
         self.sentence_list = None
+        self.parent.list_stack_info.takeItem(self.index)
 
 class SentenceList():
     """For lists of sentences imported from a text file and stored in the database"""
-    def __init__(self, sentences = None, title = "Default", num_correct = 0):
+    def __init__(self, sentences=None, title="Default", num_correct=0):
         self.sentences = sentences
         self.title = title
         self.num_correct = num_correct
 
     def __eq__(self, other):
         return self.sentences == other.sentences
-
-    def sentence_action(self):
-        self.sentence_act = QAction(f"{self.title}")
-        return self.sentence_act
-
-    def rename_action_label(self):
-        self.sentence_act.setText(f"{self.title}")
-
-    def remove_action(self):
-        self.sentence_act.setParent(None)
 
 class User():
     """For user-specific statistics and settings"""
@@ -422,7 +461,9 @@ def get_lists_from_db(db):
     all_sentence_lists = db.get_all_sentence_lists(connection)
 
     deserialized_lists = []
+    print(all_sentence_lists)
     if not all_sentence_lists:
+        print("here")
         if os.path.exists('default_sentences.txt'):
             with open('default_sentences.txt', 'r') as file:
                 sentences = file.readlines()
@@ -439,6 +480,7 @@ def get_lists_from_db(db):
             new_list = SentenceList(sentences, sentence_list[1], sentence_list[2])
             deserialized_lists.append(new_list)
 
+    print(deserialized_lists)
     return deserialized_lists
 
 if __name__ == "__main__":
@@ -448,10 +490,8 @@ if __name__ == "__main__":
     connection = db.create_connection('data.db')
     user = get_user_from_db(db)
     sentence_lists = get_lists_from_db(db)
-    #print(user)
-    #print(len(sentence_lists))
 
-    main = MainWindow()
+    main = MainWindow(sentence_lists)
     main.setWindowTitle("Memory Builder")
     main.resize(480, 320)
     main.show()
