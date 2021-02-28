@@ -6,10 +6,10 @@ import db
 
 class SentenceListWindow(QMainWindow):
     """Main window for sentence list settings"""
-    def __init__(self, parent):
+    def __init__(self, mw):
         super().__init__()
 
-        self.parent = parent
+        self.mw = mw
 
         self.connection = db.create_connection('data.db')
 
@@ -39,8 +39,8 @@ class SentenceListWindow(QMainWindow):
 
     def stack_sentence_lists(self):
         """Set up sentence list stack and associated settings"""
-        for index, sentence_list in enumerate(self.parent.controller.sentence_lists):
-            self.stack_item = SentenceListStackItem(self, sentence_list, index)
+        for index, sentence_list in enumerate(self.mw.controller.sentence_lists):
+            self.stack_item = SentenceListStackItem(self, self.mw, sentence_list, index)
             self.list_stack_info.insertItem(index, f"{sentence_list.title}")
             self.stack_item.setLayout(self.stack_item.info_layout)
             self.list_stack.addWidget(self.stack_item)
@@ -51,16 +51,12 @@ class SentenceListWindow(QMainWindow):
 
 class SentenceListStackItem(QWidget):
     """List widget item for each sentence list"""
-    def __init__(self, parent, sentence_list, index):
+    def __init__(self, parent, mw, sentence_list, index):
         super().__init__()
 
         self.parent = parent
-        self.controller = self.parent.parent.controller
-        self.current_list_label = self.parent.parent.current_list_label
-        self.menu_actions = self.parent.parent.menu_actions
-        self.sentence_menu = self.parent.parent.sentence_menu
-        self.use_sentence_list = self.parent.parent.use_sentence_list
-        self.no_lists_available = self.parent.parent.no_lists_available
+        self.mw = mw
+        self.controller = self.mw.controller
         self.connection = parent.connection
         self.sentence_list = sentence_list
         self.index = index
@@ -95,14 +91,14 @@ class SentenceListStackItem(QWidget):
             action_idx = self.controller.sentence_lists.index(self.sentence_list)
           
             try:
-                self.parent.parent.menu_actions[action_idx].setText(self.sentence_list.title)
+                self.mw.menu_actions[action_idx].setText(self.sentence_list.title)
             except ValueError:
                 print("Not found")
            
             self.list_name_label.setText(self.rename_line.text())
             self.parent.list_stack_info.item(action_idx).setText(self.rename_line.text())
-            if old_title in self.current_list_label.text():
-                self.current_list_label.setText(f"Current List: {self.rename_line.text()}")
+            if old_title in self.mw.current_list_label.text():
+                self.mw.current_list_label.setText(f"Current List: {self.rename_line.text()}")
             self.rename_line.setText("")
           
             db.update_sentence_list(
@@ -121,17 +117,17 @@ class SentenceListStackItem(QWidget):
         action_idx = self.controller.sentence_lists.index(self.sentence_list)
      
         try:
-            self.sentence_menu.removeAction(self.menu_actions[action_idx])
-            self.menu_actions.pop(action_idx)
+            self.mw.sentence_menu.removeAction(self.mw.menu_actions[action_idx])
+            self.mw.menu_actions.pop(action_idx)
         except ValueError:
             print("Not found")
       
         self.controller.sentence_lists.remove(self.sentence_list)
         if self.controller.current_list == self.sentence_list:
             if self.controller.sentence_lists:
-                self.use_sentence_list(self.controller.sentence_lists[0])
+                self.mw.use_sentence_list(self.controller.sentence_lists[0])
             else:
-                self.no_lists_available()
+                self.mw.no_lists_available()
 
         #self.sentence_list = None
         self.parent.list_stack_info.takeItem(self.index)

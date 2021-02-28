@@ -61,6 +61,7 @@ def create_users_table(conn):
     try:
         sql = '''CREATE TABLE users (
             numCorrect Int,
+            defaultPath String,
             timerDuration Int,
             autoStart Bool,
             showCorrectAnswer Bool
@@ -84,23 +85,23 @@ def get_all_users(conn):
 
 def add_user(conn, user):
     """Add a new user row in table"""
-    sql = '''INSERT INTO users VALUES (?, ?, ?, ?)'''
+    sql = '''INSERT INTO users VALUES (?, ?, ?, ?, ?)'''
     conn.execute(sql, user)
     conn.commit()
 
 def update_user(conn, user):
     """Update a user within table"""
-    sql = '''UPDATE users SET numCorrect = ?, timerDuration = ?, autoStart = ?, showCorrectAnswer = ?'''
+    sql = '''UPDATE users SET numCorrect = ?, defaultPath = ?, timerDuration = ?, autoStart = ?, showCorrectAnswer = ?'''
     conn.execute(sql, user)
     conn.commit()
 
 def test_user(user_num):
     """Pre-defined user variables for testing purposes"""
     users = {
-        "1": (5, 3, True, True),
-        "2": (0, 3, False, False),
-        "3": (2, 4, True, False),
-        "4": (1, 5, False, True)
+        "1": (5, "", 3, True, True),
+        "2": (0, "", 3, False, False),
+        "3": (2, "", 4, True, False),
+        "4": (1, "", 5, False, True)
     }
     return users[str(user_num)]
 

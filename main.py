@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
 
         self.create_menu_bar() # Set up menu bar
         self.create_info_line() # Set up info line
+        self.init_shortcuts()
 
         self.sentence_label = QLabel("Open a text file to get started or use the default sentences.")
         self.sentence_label.setAlignment(Qt.AlignCenter)
@@ -74,7 +75,6 @@ class MainWindow(QMainWindow):
         # File Menu
         self.file_menu = self.menubar.addMenu("File")
         self.open_file_act = QAction("Open", self)
-        self.open_file_act.setShortcut("Ctrl+O")
         self.open_file_act.setStatusTip("Open a file")
         self.open_file_act.triggered.connect(self.open_file)
         self.file_menu.addAction(self.open_file_act)
@@ -82,7 +82,6 @@ class MainWindow(QMainWindow):
         # Sentence List Menu
         self.sentence_menu = self.menubar.addMenu("List")
         self.sentence_settings_act = QAction("Settings", self)
-        self.sentence_settings_act.setShortcut("Ctrl+L")
         self.sentence_settings_act.triggered.connect(self.open_list_settings)
         self.sentence_menu.addAction(self.sentence_settings_act)
         for sentence_list in self.controller.sentence_lists:
@@ -93,7 +92,6 @@ class MainWindow(QMainWindow):
 
         # Settings Menu
         self.settings_act = QAction("Settings", self)
-        self.settings_act.setShortcut("Ctrl+S")
         self.settings_act.triggered.connect(self.open_settings)
         self.menubar.addAction(self.settings_act)
 
@@ -121,20 +119,34 @@ class MainWindow(QMainWindow):
         self.info_layout.addWidget(self.current_list_label)
         self.info_layout.addLayout(self.num_correct_layout)
 
+    def init_shortcuts(self):
+        action_shortcuts = [
+            ("Ctrl+O", self.open_file_act),
+            ("Ctrl+L", self.sentence_settings_act),
+            ("Ctrl+S", self.settings_act)
+        ]
+        for shortcut in action_shortcuts:
+            if len(shortcut) == 2:
+                key, widget = shortcut
+            widget.setShortcut(key)
+
     def closeEvent(self, event):
         """
         Override the closeEvent PyQt function to update the database before closing application.
         """
         db.update_user(connection, [
                 self.user.num_correct,
+                self.user.default_path,
                 self.user.timer_duration,
                 self.user.auto_start,
                 self.user.show_correct_sentence])
 
         # Add sentence list to database if it's not a duplicate and isn't empty
         all_sentence_lists = db.get_all_sentence_lists(connection)
-        duplicates = [self.controller.current_list.sentences == json.loads(''.join(sentence_list[0])) for sentence_list in all_sentence_lists]
-        if not True in duplicates and self.controller.current_list.sentences and self.controller.current_list not in self.controller.deleted_lists:
+        duplicates = [self.controller.current_list.sentences == json.loads(''.join(sentence_list[0])) 
+            for sentence_list in all_sentence_lists]
+        if not True in duplicates and self.controller.current_list.sentences and \
+                self.controller.current_list not in self.controller.deleted_lists:
             db.add_sentence_list(
                 connection,
                 json.dumps(self.controller.current_list.sentences),
@@ -176,7 +188,7 @@ class MainWindow(QMainWindow):
 
     def open_file(self):
         """Open a text file and extract the lines as sentences"""
-        fname = QFileDialog().getOpenFileName(self, 'Open file', '/Andres/Text-Files',
+        fname = QFileDialog().getOpenFileName(self, 'Open file', self.user.default_path,
             'Text Files (*.txt)')
 
         if fname[0]:
@@ -281,9 +293,10 @@ class MainWindow(QMainWindow):
 
 class User():
     """For user-specific statistics and settings"""
-    def __init__(self, num_correct=0, timer_duration=1,
+    def __init__(self, num_correct=0, default_path="", timer_duration=1,
                 auto_start=False, show_correct_sentence=False):
         self.num_correct = num_correct
+        self.default_path = default_path
         self.timer_duration = timer_duration
         self.auto_start = auto_start
         self.show_correct_sentence = show_correct_sentence
@@ -297,12 +310,13 @@ def get_user_from_db(db):
         current_user = User()
         db.add_user(connection, [
             current_user.num_correct,
+            current_user.default_path,
             current_user.timer_duration,
             current_user.auto_start,
             current_user.show_correct_sentence])
     else:
         # Get the first user (only one user is supported right now)
-        current_user = User(users[0][0], users[0][1], users[0][2], bool(users[0][3]))
+        current_user = User(users[0][0], users[0][1], users[0][2], users[0][3], bool(users[0][4]))
         print(current_user.show_correct_sentence)
 
     return current_user

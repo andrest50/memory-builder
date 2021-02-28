@@ -10,7 +10,7 @@ class SettingsWindow(QMainWindow):
         super().__init__()
         self.user = user
 
-        self.resize(200, 150)
+        self.resize(250, 150)
 
         self.layout = QVBoxLayout()
 
@@ -22,10 +22,16 @@ class SettingsWindow(QMainWindow):
         self.settings_label.setStyleSheet("font: 12px")
         self.settings_box.addRow(self.settings_label)
 
+        self.path_label = QLabel("Default Path")
+        self.path_input = QLineEdit()
+        self.path_input.setText(str(user.default_path))
+        self.path_input.setMaximumWidth(150)
+        self.settings_box.addRow(self.path_label, self.path_input)
+
         self.timer_label = QLabel("Timer")
         self.timer_input = QLineEdit()
         self.timer_input.setText(str(user.timer_duration))
-        self.timer_input.setMaximumWidth(100)
+        self.timer_input.setMaximumWidth(150)
         self.settings_box.addRow(self.timer_label, self.timer_input)
 
         self.auto_start_cb = QCheckBox("Auto Start")
@@ -51,6 +57,9 @@ class SettingsWindow(QMainWindow):
 
     def save_settings(self):
         """Set user settings into user object."""
+        if self.path_input.text():
+            self.user.default_path = self.path_input.text()
+
         if self.timer_input.text():
             self.user.timer_duration = int(self.timer_input.text())
 
