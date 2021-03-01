@@ -14,6 +14,7 @@ class SentenceListWindow(QMainWindow):
         self.connection = db.create_connection('data.db')
 
         self.resize(400, 240)
+        self.setWindowTitle("Sentence Lists")
 
         self.layout = QHBoxLayout()
         self.select_layout = QHBoxLayout()
@@ -66,6 +67,9 @@ class SentenceListStackItem(QWidget):
         self.list_name_label = QLabel(f"{sentence_list.title}")
         self.info_layout.addRow(self.list_name_label)
 
+        self.list_correct_label = QLabel(f"Number correct: {sentence_list.num_correct}")
+        self.info_layout.addRow(self.list_correct_label)
+
         self.rename_line = QLineEdit()
         self.info_layout.addRow("Rename: ", self.rename_line)
 
@@ -89,18 +93,18 @@ class SentenceListStackItem(QWidget):
             old_title = self.sentence_list.title
             self.sentence_list.title = self.rename_line.text()
             action_idx = self.controller.sentence_lists.index(self.sentence_list)
-          
+         
             try:
                 self.mw.menu_actions[action_idx].setText(self.sentence_list.title)
             except ValueError:
                 print("Not found")
-           
+          
             self.list_name_label.setText(self.rename_line.text())
             self.parent.list_stack_info.item(action_idx).setText(self.rename_line.text())
             if old_title in self.mw.current_list_label.text():
                 self.mw.current_list_label.setText(f"Current List: {self.rename_line.text()}")
             self.rename_line.setText("")
-          
+         
             db.update_sentence_list(
                 self.connection,
                 json.dumps(self.sentence_list.sentences),

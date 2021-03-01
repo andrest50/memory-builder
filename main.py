@@ -15,7 +15,6 @@ from controller import Controller
 """
 To Do:
 - Refactor code + organize
-- Add default folder to open in user settings
 """
 
 class MainWindow(QMainWindow):
@@ -138,6 +137,7 @@ class MainWindow(QMainWindow):
                 self.user.num_correct,
                 self.user.default_path,
                 self.user.timer_duration,
+                self.user.char_based_timer,
                 self.user.auto_start,
                 self.user.show_correct_sentence])
 
@@ -195,7 +195,6 @@ class MainWindow(QMainWindow):
             # Add sentence list to database if it's not a duplicate and isn't empty
             all_sentence_lists = db.get_all_sentence_lists(connection)
             duplicates = [self.controller.current_list.sentences == json.loads(''.join(sentence_list[0])) for sentence_list in all_sentence_lists]
-            print(duplicates)
             if not True in duplicates and self.controller.current_list:
                 db.add_sentence_list(
                     connection,
@@ -235,7 +234,11 @@ class MainWindow(QMainWindow):
             self.controller.current_sentence = self.new_sentence
             self.controller.sentence_active = True
             self.input_box.setFocus()
-            self.resp_timer.start(self.user.timer_duration * 1000)
+            if self.user.char_based_timer:
+                print(len(self.new_sentence) * 100)
+                self.resp_timer.start(len(self.new_sentence) * 100)
+            else:
+                self.resp_timer.start(self.user.timer_duration * 1000)
 
     def clear_sentence(self):
         """Hide the current sentence"""
@@ -294,10 +297,11 @@ class MainWindow(QMainWindow):
 class User():
     """For user-specific statistics and settings"""
     def __init__(self, num_correct=0, default_path="", timer_duration=1,
-                auto_start=False, show_correct_sentence=False):
+                char_based_timer=False, auto_start=False, show_correct_sentence=False):
         self.num_correct = num_correct
         self.default_path = default_path
         self.timer_duration = timer_duration
+        self.char_based_timer = char_based_timer
         self.auto_start = auto_start
         self.show_correct_sentence = show_correct_sentence
 
@@ -312,11 +316,12 @@ def get_user_from_db(db):
             current_user.num_correct,
             current_user.default_path,
             current_user.timer_duration,
+            current_user.char_based_timer,
             current_user.auto_start,
             current_user.show_correct_sentence])
     else:
         # Get the first user (only one user is supported right now)
-        current_user = User(users[0][0], users[0][1], users[0][2], users[0][3], bool(users[0][4]))
+        current_user = User(users[0][0], users[0][1], users[0][2], users[0][3], users[0][4], bool(users[0][5]))
         print(current_user.show_correct_sentence)
 
     return current_user

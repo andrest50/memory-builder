@@ -11,6 +11,7 @@ class SettingsWindow(QMainWindow):
         self.user = user
 
         self.resize(250, 150)
+        self.setWindowTitle("Settings")
 
         self.layout = QVBoxLayout()
 
@@ -33,6 +34,11 @@ class SettingsWindow(QMainWindow):
         self.timer_input.setText(str(user.timer_duration))
         self.timer_input.setMaximumWidth(150)
         self.settings_box.addRow(self.timer_label, self.timer_input)
+
+        self.char_based_timer_cb = QCheckBox("Characater length-based Timer")
+        if bool(user.char_based_timer) is True:
+            self.char_based_timer_cb.setChecked(True)
+        self.settings_box.addWidget(self.char_based_timer_cb)
 
         self.auto_start_cb = QCheckBox("Auto Start")
         if bool(user.auto_start) is True:
@@ -62,6 +68,11 @@ class SettingsWindow(QMainWindow):
 
         if self.timer_input.text():
             self.user.timer_duration = int(self.timer_input.text())
+
+        if self.char_based_timer_cb.isChecked():
+            self.user.char_based_timer = True
+        else:
+            self.user.char_based_timer = False
 
         if self.auto_start_cb.isChecked():
             self.user.auto_start = True
