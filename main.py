@@ -71,15 +71,14 @@ class MainWindow(QMainWindow):
         """
         self.menubar = self.menuBar()
 
-        # File Menu
-        self.file_menu = self.menubar.addMenu("File")
+        # Sentence List Menu
+        self.sentence_menu = self.menubar.addMenu("List")
+
         self.open_file_act = QAction("Open", self)
         self.open_file_act.setStatusTip("Open a file")
         self.open_file_act.triggered.connect(self.open_file)
-        self.file_menu.addAction(self.open_file_act)
+        self.sentence_menu.addAction(self.open_file_act)
 
-        # Sentence List Menu
-        self.sentence_menu = self.menubar.addMenu("List")
         self.sentence_settings_act = QAction("Settings", self)
         self.sentence_settings_act.triggered.connect(self.open_list_settings)
         self.sentence_menu.addAction(self.sentence_settings_act)
@@ -167,7 +166,7 @@ class MainWindow(QMainWindow):
 
     def use_sentence_list(self, sentence_list):
         """Update the current sentence list and related labels"""
-        self.controller.print_all_lists()
+        #self.controller.print_all_lists()
         db.update_sentence_list(
                 connection,
                 json.dumps(self.controller.current_list.sentences),
@@ -198,7 +197,8 @@ class MainWindow(QMainWindow):
         if fname[0]:
             # Add sentence list to database if it's not a duplicate and isn't empty
             all_sentence_lists = db.get_all_sentence_lists(connection)
-            duplicates = [self.controller.current_list.sentences == json.loads(''.join(sentence_list[0])) for sentence_list in all_sentence_lists]
+            duplicates = [self.controller.current_list.sentences == json.loads(''.join(sentence_list[0])) 
+                for sentence_list in all_sentence_lists]
             if not True in duplicates and self.controller.current_list:
                 db.add_sentence_list(
                     connection,
@@ -208,12 +208,14 @@ class MainWindow(QMainWindow):
                     self.controller.current_list.num_correct)
 
             with open(fname[0], 'r') as file:
-                duplicates = [fname[0] == sentence_list.title for sentence_list in self.controller.sentence_lists]
+                duplicates = [os.path.basename(fname[0]) == sentence_list.title 
+                    for sentence_list in self.controller.sentence_lists]
+                print(duplicates)
                 if sum(duplicates) <= 1 in duplicates:
-                    self.controller.current_list.sentences = file.readlines()
-                    self.controller.current_list.title = fname[0]
+                    self.controller.current_list = next((sentence_list for sentence_list in self.controller.sentence_lists
+                        if os.path.basename(fname[0]) == sentence_list.title), None)
                 else:
-                    self.controller.current_list = SentenceList(file.readlines(), fname[0])
+                    self.controller.current_list = SentenceList(file.readlines(), os.path.basename(fname[0]))
                     self.sentence_act = QAction(f"{self.controller.current_list.title}")
                     self.sentence_act.triggered.connect(
                         partial(self.use_sentence_list, self.controller.current_list))
@@ -329,8 +331,8 @@ def get_user_from_db(db):
             current_user.show_correct_sentence])
     else:
         # Get the first user (only one user is supported right now)
-        current_user = User(users[0][0], users[0][1], users[0][2], users[0][3], users[0][4], users[0][5], bool(users[0][6]))
-        print(current_user.show_correct_sentence)
+        current_user = User(users[0][0], users[0][1], users[0][2], 
+            users[0][3], users[0][4], users[0][5], bool(users[0][6]))
 
     return current_user
 

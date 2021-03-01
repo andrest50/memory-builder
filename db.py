@@ -47,7 +47,8 @@ def add_sentence_list(conn, sentences, title, num_completed, num_correct):
 
 def update_sentence_list(conn, sentences, title, num_completed, num_correct):
     """Update sentence list within table"""
-    sql = '''UPDATE sentenceLists SET sentences = ?, title = ?, numCompleted = ?, numCorrect = ? WHERE sentences = ?'''
+    sql = '''UPDATE sentenceLists SET sentences = ?, title = ?, 
+        numCompleted = ?, numCorrect = ? WHERE sentences = ?'''
     conn.execute(sql, (sentences, title, num_completed, num_correct, sentences))
     conn.commit()
 
