@@ -19,7 +19,8 @@ def create_sentence_lists_table(conn):
         sql = '''CREATE TABLE sentenceLists (
             sentences String,
             title String,
-            num_correct Int
+            numCompleted Int,
+            numCorrect Int
         )'''
         conn.execute(sql)
     except:
@@ -38,16 +39,16 @@ def get_all_sentence_lists(conn):
     data = cursor.fetchall()
     return data
 
-def add_sentence_list(conn, sentences, title, num_correct):
+def add_sentence_list(conn, sentences, title, num_completed, num_correct):
     """Add new sentence list row to table"""
-    conn.execute('INSERT INTO sentenceLists(sentences, title, num_correct) VALUES (?, ?, ?)', 
-        (sentences, title, num_correct))
+    conn.execute('INSERT INTO sentenceLists(sentences, title, numCompleted, numCorrect) VALUES (?, ?, ?, ?)', 
+        (sentences, title, num_completed, num_correct))
     conn.commit()
 
-def update_sentence_list(conn, sentences, title, num_correct):
+def update_sentence_list(conn, sentences, title, num_completed, num_correct):
     """Update sentence list within table"""
-    sql = '''UPDATE sentenceLists SET sentences = ?, title = ?, num_correct = ? WHERE sentences = ?'''
-    conn.execute(sql, (sentences, title, num_correct, sentences))
+    sql = '''UPDATE sentenceLists SET sentences = ?, title = ?, numCompleted = ?, numCorrect = ? WHERE sentences = ?'''
+    conn.execute(sql, (sentences, title, num_completed, num_correct, sentences))
     conn.commit()
 
 def delete_sentence_list(conn, sentences):
@@ -63,6 +64,7 @@ def create_users_table(conn):
             numCorrect Int,
             defaultPath String,
             timerDuration Int,
+            charTimerValue Int,
             charBasedTimer Bool,
             autoStart Bool,
             showCorrectAnswer Bool
@@ -86,14 +88,14 @@ def get_all_users(conn):
 
 def add_user(conn, user):
     """Add a new user row in table"""
-    sql = '''INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)'''
+    sql = '''INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?)'''
     conn.execute(sql, user)
     conn.commit()
 
 def update_user(conn, user):
     """Update a user within table"""
     sql = '''UPDATE users SET numCorrect = ?, defaultPath = ?, timerDuration = ?, 
-        charBasedTimer = ?, autoStart = ?, showCorrectAnswer = ?'''
+        charTimerValue = ?, charBasedTimer = ?, autoStart = ?, showCorrectAnswer = ?'''
     conn.execute(sql, user)
     conn.commit()
 

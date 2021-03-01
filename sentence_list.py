@@ -65,7 +65,11 @@ class SentenceListStackItem(QWidget):
         self.info_layout = QFormLayout()
 
         self.list_name_label = QLabel(f"{sentence_list.title}")
+        self.list_name_label.setFont(QFont('Times', weight=QFont.Bold))
         self.info_layout.addRow(self.list_name_label)
+
+        self.list_completed_label = QLabel(f"Number completed: {sentence_list.num_completed}")
+        self.info_layout.addRow(self.list_completed_label)
 
         self.list_correct_label = QLabel(f"Number correct: {sentence_list.num_correct}")
         self.info_layout.addRow(self.list_correct_label)
@@ -109,6 +113,7 @@ class SentenceListStackItem(QWidget):
                 self.connection,
                 json.dumps(self.sentence_list.sentences),
                 self.sentence_list.title,
+                self.sentence_list.num_completed,
                 self.sentence_list.num_correct)
 
     def delete_list(self):
@@ -138,9 +143,10 @@ class SentenceListStackItem(QWidget):
 
 class SentenceList():
     """For lists of sentences imported from a text file and stored in the database"""
-    def __init__(self, sentences=None, title="Default", num_correct=0):
+    def __init__(self, sentences=None, title="Default", num_completed=0, num_correct=0):
         self.sentences = sentences
         self.title = title
+        self.num_completed = num_completed
         self.num_correct = num_correct
 
     def __eq__(self, other):

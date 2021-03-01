@@ -3,14 +3,15 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QFormLayout, 
     QLabel, QLineEdit, 
     QCheckBox, QPushButton, 
-    QWidget, QMainWindow)
+    QWidget, QMainWindow,
+    QSlider, QSpinBox)
 
 class SettingsWindow(QMainWindow):
     def __init__(self, user):
         super().__init__()
         self.user = user
 
-        self.resize(250, 150)
+        self.resize(260, 150)
         self.setWindowTitle("Settings")
 
         self.layout = QVBoxLayout()
@@ -30,10 +31,17 @@ class SettingsWindow(QMainWindow):
         self.settings_box.addRow(self.path_label, self.path_input)
 
         self.timer_label = QLabel("Timer")
-        self.timer_input = QLineEdit()
-        self.timer_input.setText(str(user.timer_duration))
-        self.timer_input.setMaximumWidth(150)
+        self.timer_input = QSpinBox()
+        self.timer_input.setValue(user.timer_duration)
+        self.timer_input.setMaximumWidth(50)
         self.settings_box.addRow(self.timer_label, self.timer_input)
+
+        self.char_timer_label = QLabel(f"ms/character: {self.user.char_timer_value}")
+        self.char_timer_slider = QSlider(Qt.Horizontal, self)
+        self.char_timer_slider.setValue(self.user.char_timer_value)
+        self.char_timer_slider.setRange(10, 150)
+        self.char_timer_slider.valueChanged.connect(self.change_slider_value)
+        self.settings_box.addRow(self.char_timer_label, self.char_timer_slider)
 
         self.char_based_timer_cb = QCheckBox("Characater length-based Timer")
         if bool(user.char_based_timer) is True:
@@ -60,6 +68,10 @@ class SettingsWindow(QMainWindow):
         self.window = QWidget(self)
         self.setCentralWidget(self.window)
         self.window.setLayout(self.layout)
+
+    def change_slider_value(self, value):
+        self.user.char_timer_value = value
+        self.char_timer_label.setText(f"ms/character: {str(value)}")
 
     def save_settings(self):
         """Set user settings into user object."""

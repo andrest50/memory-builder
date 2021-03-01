@@ -137,6 +137,7 @@ class MainWindow(QMainWindow):
                 self.user.num_correct,
                 self.user.default_path,
                 self.user.timer_duration,
+                self.user.char_timer_value,
                 self.user.char_based_timer,
                 self.user.auto_start,
                 self.user.show_correct_sentence])
@@ -151,12 +152,14 @@ class MainWindow(QMainWindow):
                 connection,
                 json.dumps(self.controller.current_list.sentences),
                 self.controller.current_list.title,
+                self.controller.current_list.num_completed,
                 self.controller.current_list.num_correct)
         else:
             db.update_sentence_list(
                 connection,
                 json.dumps(self.controller.current_list.sentences),
                 self.controller.current_list.title,
+                self.controller.current_list.num_completed,
                 self.controller.current_list.num_correct)
 
         connection.close() # Close database connection
@@ -169,6 +172,7 @@ class MainWindow(QMainWindow):
                 connection,
                 json.dumps(self.controller.current_list.sentences),
                 self.controller.current_list.title,
+                self.controller.current_list.num_completed,
                 self.controller.current_list.num_correct)
         self.controller.current_list = sentence_list
         self.current_list_label.setText(f"Current List: {self.controller.current_list.title}")
@@ -200,6 +204,7 @@ class MainWindow(QMainWindow):
                     connection,
                     json.dumps(self.controller.current_list.sentences),
                     self.controller.current_list.title,
+                    self.controller.current_list.num_completed,
                     self.controller.current_list.num_correct)
 
             with open(fname[0], 'r') as file:
@@ -235,8 +240,8 @@ class MainWindow(QMainWindow):
             self.controller.sentence_active = True
             self.input_box.setFocus()
             if self.user.char_based_timer:
-                print(len(self.new_sentence) * 100)
-                self.resp_timer.start(len(self.new_sentence) * 100)
+                print(len(self.new_sentence) * self.user.char_timer_value)
+                self.resp_timer.start(len(self.new_sentence) * self.user.char_timer_value)
             else:
                 self.resp_timer.start(self.user.timer_duration * 1000)
 
@@ -272,6 +277,7 @@ class MainWindow(QMainWindow):
         """Check user input against correct answer"""
         if self.controller.sentence_active:
 
+            self.controller.current_list.num_completed += 1
             if self.input_box.text().rstrip() == self.controller.current_sentence.rstrip():
                 self.user.num_correct += 1
                 self.controller.current_list.num_correct += 1
@@ -296,11 +302,12 @@ class MainWindow(QMainWindow):
 
 class User():
     """For user-specific statistics and settings"""
-    def __init__(self, num_correct=0, default_path="", timer_duration=1,
+    def __init__(self, num_correct=0, default_path="", timer_duration=1, char_timer_value=100,
                 char_based_timer=False, auto_start=False, show_correct_sentence=False):
         self.num_correct = num_correct
         self.default_path = default_path
         self.timer_duration = timer_duration
+        self.char_timer_value = char_timer_value
         self.char_based_timer = char_based_timer
         self.auto_start = auto_start
         self.show_correct_sentence = show_correct_sentence
@@ -316,12 +323,13 @@ def get_user_from_db(db):
             current_user.num_correct,
             current_user.default_path,
             current_user.timer_duration,
+            current_user.char_timer_value,
             current_user.char_based_timer,
             current_user.auto_start,
             current_user.show_correct_sentence])
     else:
         # Get the first user (only one user is supported right now)
-        current_user = User(users[0][0], users[0][1], users[0][2], users[0][3], users[0][4], bool(users[0][5]))
+        current_user = User(users[0][0], users[0][1], users[0][2], users[0][3], users[0][4], users[0][5], bool(users[0][6]))
         print(current_user.show_correct_sentence)
 
     return current_user
@@ -340,11 +348,12 @@ def get_lists_from_db(db):
                     connection,
                     json.dumps(new_list.sentences),
                     new_list.title,
+                    new_list.num_completed,
                     new_list.num_correct)
     else:
         for sentence_list in all_sentence_lists:
             new_list = SentenceList(json.loads(''.join(sentence_list[0])),
-                sentence_list[1], sentence_list[2])
+                sentence_list[1], sentence_list[2], sentence_list[3])
             deserialized_lists.append(new_list)
 
     return deserialized_lists
