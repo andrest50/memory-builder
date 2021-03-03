@@ -7,8 +7,9 @@ from PyQt5.QtWidgets import (
     QSlider, QSpinBox)
 
 class SettingsWindow(QMainWindow):
-    def __init__(self, user):
+    def __init__(self, mw, user):
         super().__init__()
+        self.mw = mw
         self.user = user
 
         self.resize(260, 150)
@@ -48,6 +49,11 @@ class SettingsWindow(QMainWindow):
             self.char_based_timer_cb.setChecked(True)
         self.settings_box.addWidget(self.char_based_timer_cb)
 
+        self.no_typing_cb = QCheckBox("No Typing")
+        if bool(user.no_typing) is True:
+            self.no_typing_cb.setChecked(True)
+        self.settings_box.addWidget(self.no_typing_cb)
+
         self.auto_start_cb = QCheckBox("Auto Start")
         if bool(user.auto_start) is True:
             self.auto_start_cb.setChecked(True)
@@ -85,6 +91,12 @@ class SettingsWindow(QMainWindow):
             self.user.char_based_timer = True
         else:
             self.user.char_based_timer = False
+
+        if self.no_typing_cb.isChecked():
+            self.user.no_typing = True
+        else:
+            self.user.no_typing = False
+        self.mw.no_typing_mode()
 
         if self.auto_start_cb.isChecked():
             self.user.auto_start = True

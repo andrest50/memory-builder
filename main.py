@@ -55,9 +55,12 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.sentence_label)
         self.layout.addWidget(self.correct_answer_label)
         self.layout.addWidget(self.correct_or_not_label)
+        self.init_button_layout()
         self.layout.addWidget(self.input_box)
         self.layout.addWidget(self.generate_sentence_btn)
         self.window.setLayout(self.layout)
+
+        self.no_typing_mode()
 
         self.resp_timer = QTimer()
         self.resp_timer.timeout.connect(self.clear_sentence)
@@ -102,20 +105,19 @@ class MainWindow(QMainWindow):
         self.current_list_label.setAlignment(Qt.AlignLeft)
 
         # Two labels in a vertical box layout for number of correct answers
-        self.num_correct_label = QLabel(f"Total Correct: {str(self.user.num_correct)}")
-        self.num_correct_label.setAlignment(Qt.AlignRight)
+        #self.num_correct_label = QLabel(f"Total Correct: {str(self.user.num_correct)}")
+        #self.num_correct_label.setAlignment(Qt.AlignRight)
+        #self.num_correct_label.setContentsMargins(0, 0, -40, 0)
 
         self.num_list_correct_label = QLabel(f"List Correct: {str(self.controller.current_list.num_correct)}")
         self.num_list_correct_label.setAlignment(Qt.AlignRight)
 
-        self.num_correct_layout = QVBoxLayout()
-        self.num_correct_layout.addWidget(self.num_correct_label)
-        self.num_correct_layout.addWidget(self.num_list_correct_label)
-
         # Main info layout that contains the single label and inner layout
         self.info_layout = QHBoxLayout()
         self.info_layout.addWidget(self.current_list_label)
-        self.info_layout.addLayout(self.num_correct_layout)
+        #self.info_layout.addWidget(self.num_correct_label)
+        self.info_layout.addWidget(self.num_list_correct_label)
+        #self.info_layout.addLayout(self.num_correct_layout)
 
     def init_shortcuts(self):
         action_shortcuts = [
@@ -138,6 +140,7 @@ class MainWindow(QMainWindow):
                 self.user.timer_duration,
                 self.user.char_timer_value,
                 self.user.char_based_timer,
+                self.user.no_typing,
                 self.user.auto_start,
                 self.user.show_correct_sentence])
 
@@ -181,7 +184,7 @@ class MainWindow(QMainWindow):
 
     def open_settings(self):
         """Open settings window"""
-        self.settings_window = SettingsWindow(self.user)
+        self.settings_window = SettingsWindow(self, self.user)
         self.settings_window.show()
 
     def open_list_settings(self):
@@ -252,6 +255,25 @@ class MainWindow(QMainWindow):
         self.sentence_label.setText("Type the sentence and hit Enter.")
         self.resp_timer.stop()
 
+    def init_button_layout(self):
+        self.correct_btn = QPushButton("Correct")
+        self.incorrect_btn = QPushButton("Incorrect")
+        self.btn_layout = QHBoxLayout()
+        self.btn_layout.setAlignment(Qt.AlignHCenter)
+        self.btn_layout.addWidget(self.correct_btn)
+        self.btn_layout.addWidget(self.incorrect_btn)
+        self.layout.addLayout(self.btn_layout)
+
+    def no_typing_mode(self):
+        if self.user.no_typing:
+            self.input_box.hide()
+            self.correct_btn.show()
+            self.incorrect_btn.show()
+        else:
+            self.correct_btn.hide()
+            self.incorrect_btn.hide()
+            self.input_box.show()
+
     def no_lists_available(self):
         """For when there are no sentence lists to use"""
         self.clear_current_list_label()
@@ -283,7 +305,7 @@ class MainWindow(QMainWindow):
             if self.input_box.text().rstrip() == self.controller.current_sentence.rstrip():
                 self.user.num_correct += 1
                 self.controller.current_list.num_correct += 1
-                self.num_correct_label.setText("Correct: " + str(self.user.num_correct))
+                #self.num_correct_label.setText("Correct: " + str(self.user.num_correct))
                 self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
                 self.correct_or_not_label.setText("Correct!")
             else:
@@ -305,14 +327,25 @@ class MainWindow(QMainWindow):
 class User():
     """For user-specific statistics and settings"""
     def __init__(self, num_correct=0, default_path="", timer_duration=1, char_timer_value=100,
-                char_based_timer=False, auto_start=False, show_correct_sentence=False):
+                char_based_timer=False, no_typing=False, auto_start=False, show_correct_sentence=False):
         self.num_correct = num_correct
         self.default_path = default_path
         self.timer_duration = timer_duration
         self.char_timer_value = char_timer_value
         self.char_based_timer = char_based_timer
+        self.no_typing = no_typing
         self.auto_start = auto_start
         self.show_correct_sentence = show_correct_sentence
+
+    def __repr__(self):
+        print(f"Number correct: {self.num_correct}")
+        print(f"Default path: {self.default_path}")
+        print(f"Timer duration: {self.timer_duration}")
+        print(f"Character timer value: {self.char_timer_value}")
+        print(f"Character-based timer: {self.char_based_timer}")
+        print(f"No typing: {self.no_typing}")
+        print(f"Auto start: {self.auto_start}")
+        print(f"Show correct sentence: {self.show_correct_sentence}")
 
 def get_user_from_db(db):
     """Get main user settings and statistics from database"""
@@ -327,12 +360,13 @@ def get_user_from_db(db):
             current_user.timer_duration,
             current_user.char_timer_value,
             current_user.char_based_timer,
+            current_user.no_typing,
             current_user.auto_start,
             current_user.show_correct_sentence])
     else:
         # Get the first user (only one user is supported right now)
         current_user = User(users[0][0], users[0][1], users[0][2], 
-            users[0][3], users[0][4], users[0][5], bool(users[0][6]))
+            users[0][3], users[0][4], users[0][5], users[0][6], bool(users[0][7]))
 
     return current_user
 
@@ -373,5 +407,6 @@ if __name__ == "__main__":
     main = MainWindow(user, controller)
     main.setWindowTitle("Memory Builder")
     main.resize(480, 320)
+    main.setMaximumSize(640, 480)
     main.show()
     sys.exit(app.exec_())

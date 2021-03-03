@@ -151,3 +151,9 @@ class SentenceList():
 
     def __eq__(self, other):
         return self.sentences == other.sentences
+
+    def __repr__(self):
+        print(f"Sentences: {self.sentences}")
+        print(f"Title: {self.title}")
+        print(f"Number completed: {self.num_completed}")
+        print(f"Number corrected: {self.num_correct}")
