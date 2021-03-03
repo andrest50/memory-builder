@@ -15,6 +15,7 @@ from controller import Controller
 """
 To Do:
 - Refactor code + organize
+- Fix changing between no typing settings in the middle of a sentence
 """
 
 class MainWindow(QMainWindow):
@@ -50,11 +51,21 @@ class MainWindow(QMainWindow):
         self.correct_or_not_label = QLabel("")
         self.correct_or_not_label.setAlignment(Qt.AlignCenter)
 
+        self.show_answer_layout = QHBoxLayout()
+        self.show_answer_layout.setAlignment(Qt.AlignCenter)
+        self.show_answer_btn = QPushButton("Show Answer", self)
+        self.show_answer_btn.setMaximumWidth(100)
+        self.show_answer_btn.setStyleSheet("background-color: #8EC6D6;")
+        self.show_answer_btn.clicked.connect(self.show_answer)
+        self.show_answer_btn.hide()
+        self.show_answer_layout.addWidget(self.show_answer_btn)
+
         self.layout = QVBoxLayout()
         self.layout.addLayout(self.info_layout)
         self.layout.addWidget(self.sentence_label)
         self.layout.addWidget(self.correct_answer_label)
         self.layout.addWidget(self.correct_or_not_label)
+        self.layout.addLayout(self.show_answer_layout)
         self.init_button_layout()
         self.layout.addWidget(self.input_box)
         self.layout.addWidget(self.generate_sentence_btn)
@@ -245,24 +256,69 @@ class MainWindow(QMainWindow):
             self.controller.sentence_active = True
             self.input_box.setFocus()
             if self.user.char_based_timer:
-                print(len(self.new_sentence) * self.user.char_timer_value)
                 self.resp_timer.start(len(self.new_sentence) * self.user.char_timer_value)
             else:
                 self.resp_timer.start(self.user.timer_duration * 1000)
 
     def clear_sentence(self):
         """Hide the current sentence"""
-        self.sentence_label.setText("Type the sentence and hit Enter.")
+        if user.no_typing:
+            self.show_answer_btn.show()
+            self.sentence_label.setText("Was your answer correct or incorrect?")
+        else:
+            self.sentence_label.setText("Type the sentence and hit Enter.")
         self.resp_timer.stop()
+
+    def show_answer(self):
+        if self.correct_answer_label.text() == "":
+            self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
+        else:
+            self.correct_answer_label.setText("")
 
     def init_button_layout(self):
         self.correct_btn = QPushButton("Correct")
+        self.correct_btn.setStyleSheet("background-color: #ABC2DC;")
+        self.correct_btn.clicked.connect(self.correct_answer)
         self.incorrect_btn = QPushButton("Incorrect")
+        self.incorrect_btn.setStyleSheet("background-color: #ABC2DC;")
+        self.incorrect_btn.clicked.connect(self.incorrect_answer)
         self.btn_layout = QHBoxLayout()
         self.btn_layout.setAlignment(Qt.AlignHCenter)
         self.btn_layout.addWidget(self.correct_btn)
         self.btn_layout.addWidget(self.incorrect_btn)
         self.layout.addLayout(self.btn_layout)
+
+    def correct_answer(self):
+        if self.sentence_label.text() != "Was your answer correct or incorrect?":
+            return
+
+        self.show_answer_btn.hide()
+        if self.controller.sentence_active:
+            self.controller.current_list.num_completed += 1
+            self.user.num_correct += 1
+            self.controller.current_list.num_correct += 1
+            self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
+            self.correct_or_not_label.setText("Correct!")
+            if self.user.show_correct_sentence:
+                self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
+                self.answer_timer.start(2000)
+                self.controller.sentence_active = False
+                self.input_box.setText("")
+
+    def incorrect_answer(self):
+        if self.sentence_label.text() != "Was your answer correct or incorrect?":
+            return
+
+        self.show_answer_btn.hide()
+        if self.controller.sentence_active:
+            self.correct_or_not_label.setText("Incorrect!")
+
+            if self.user.show_correct_sentence:
+                self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
+
+            self.answer_timer.start(2000)
+            self.controller.sentence_active = False
+            self.input_box.setText("")
 
     def no_typing_mode(self):
         if self.user.no_typing:
@@ -270,6 +326,7 @@ class MainWindow(QMainWindow):
             self.correct_btn.show()
             self.incorrect_btn.show()
         else:
+            self.show_answer_btn.hide()
             self.correct_btn.hide()
             self.incorrect_btn.hide()
             self.input_box.show()
