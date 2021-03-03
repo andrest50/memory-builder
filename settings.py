@@ -96,7 +96,6 @@ class SettingsWindow(QMainWindow):
             self.user.no_typing = True
         else:
             self.user.no_typing = False
-        self.mw.no_typing_mode()
 
         if self.auto_start_cb.isChecked():
             self.user.auto_start = True
@@ -108,4 +107,5 @@ class SettingsWindow(QMainWindow):
         else:
             self.user.show_correct_sentence = False
 
+        self.mw.no_typing_mode()
         self.close()

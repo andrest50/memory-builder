@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
         self.show_answer_layout.setAlignment(Qt.AlignCenter)
         self.show_answer_btn = QPushButton("Show Answer", self)
         self.show_answer_btn.setMaximumWidth(100)
-        self.show_answer_btn.setStyleSheet("background-color: #8EC6D6;")
+        #self.show_answer_btn.setStyleSheet("background-color: #8EC6D6;")
         self.show_answer_btn.clicked.connect(self.show_answer)
         self.show_answer_btn.hide()
         self.show_answer_layout.addWidget(self.show_answer_btn)
@@ -240,9 +240,15 @@ class MainWindow(QMainWindow):
                 self.current_list_label.setText(f"Current List: {self.controller.current_list.title}")
                 self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
 
+    def prep_display_sentence(self):
+        self.correct_answer_label.setText("")
+        self.correct_or_not_label.setText("")
+        self.answer_timer.stop()
+        self.resp_timer.stop()
+
     def get_random_sentence(self):
         """Generate a random sentence from the current sentence list."""
-        self.correct_answer_label.setText("")
+        self.prep_display_sentence()
         if self.controller.current_list:
             self.new_sentence = random.choice(self.controller.current_list.sentences).rstrip()
 
@@ -270,57 +276,53 @@ class MainWindow(QMainWindow):
         self.resp_timer.stop()
 
     def show_answer(self):
+        """Show the sentence answer to the user"""
         if self.correct_answer_label.text() == "":
             self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
         else:
             self.correct_answer_label.setText("")
 
     def init_button_layout(self):
+        """Set up the buttons for no typing mode"""
         self.correct_btn = QPushButton("Correct")
-        self.correct_btn.setStyleSheet("background-color: #ABC2DC;")
-        self.correct_btn.clicked.connect(self.correct_answer)
+        #self.correct_btn.setStyleSheet("background-color: #ABC2DC;")
+        self.correct_btn.clicked.connect(self.correct_btn_click)
         self.incorrect_btn = QPushButton("Incorrect")
-        self.incorrect_btn.setStyleSheet("background-color: #ABC2DC;")
-        self.incorrect_btn.clicked.connect(self.incorrect_answer)
+        #self.incorrect_btn.setStyleSheet("background-color: #ABC2DC;")
+        self.incorrect_btn.clicked.connect(self.incorrect_btn_click)
         self.btn_layout = QHBoxLayout()
         self.btn_layout.setAlignment(Qt.AlignHCenter)
         self.btn_layout.addWidget(self.correct_btn)
         self.btn_layout.addWidget(self.incorrect_btn)
         self.layout.addLayout(self.btn_layout)
 
-    def correct_answer(self):
+    def correct_btn_click(self):
+        """Slot function for clicking on correct button"""
         if self.sentence_label.text() != "Was your answer correct or incorrect?":
             return
 
         self.show_answer_btn.hide()
         if self.controller.sentence_active:
             self.controller.current_list.num_completed += 1
-            self.user.num_correct += 1
-            self.controller.current_list.num_correct += 1
-            self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
-            self.correct_or_not_label.setText("Correct!")
-            if self.user.show_correct_sentence:
-                self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
-                self.answer_timer.start(2000)
-                self.controller.sentence_active = False
-                self.input_box.setText("")
+            self.correct_answer()
+            self.sentence_complete()
 
-    def incorrect_answer(self):
+    def incorrect_btn_click(self):
+        """Slot function for clicking on incorrect button"""
         if self.sentence_label.text() != "Was your answer correct or incorrect?":
             return
 
         self.show_answer_btn.hide()
         if self.controller.sentence_active:
+            self.controller.current_list.num_completed += 1
             self.correct_or_not_label.setText("Incorrect!")
-
-            if self.user.show_correct_sentence:
-                self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
-
-            self.answer_timer.start(2000)
-            self.controller.sentence_active = False
-            self.input_box.setText("")
+            self.sentence_complete()
 
     def no_typing_mode(self):
+        """Adjust widgets depending on if no typing mode is on"""
+        if self.controller.sentence_active:
+            self.clear_answer()
+
         if self.user.no_typing:
             self.input_box.hide()
             self.correct_btn.show()
@@ -354,36 +356,46 @@ class MainWindow(QMainWindow):
         if bool(auto_start) is True:
             self.get_random_sentence()
 
+    def correct_answer(self):
+        """Update variables and text when an answer is correct"""
+        self.user.num_correct += 1
+        self.controller.current_list.num_correct += 1
+        self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
+        self.correct_or_not_label.setText("Correct!")
+
+    def sentence_complete(self):
+        """For after the user has given an answer"""
+        if self.user.show_correct_sentence:
+            self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
+
+        if not self.user.no_typing and self.sentence_label.text() != "Type the sentence and hit Enter.":
+            self.resp_timer.stop()
+
+        self.answer_timer.start(2000)
+        self.controller.sentence_active = False
+        self.input_box.setText("")
+
     def check_answer(self):
         """Check user input against correct answer"""
         if self.controller.sentence_active:
 
             self.controller.current_list.num_completed += 1
             if self.input_box.text().rstrip() == self.controller.current_sentence.rstrip():
-                self.user.num_correct += 1
-                self.controller.current_list.num_correct += 1
-                #self.num_correct_label.setText("Correct: " + str(self.user.num_correct))
-                self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
-                self.correct_or_not_label.setText("Correct!")
+                self.correct_answer()
             else:
                 self.correct_or_not_label.setText("Incorrect!")
-
-            if self.user.show_correct_sentence:
-                self.correct_answer_label.setText(self.controller.current_sentence.rstrip())
 
             if self.sentence_label.text() != "Type the sentence and hit Enter.":
                 self.resp_timer.stop()
 
-            self.answer_timer.start(2000)
-            self.controller.sentence_active = False
-            self.input_box.setText("")
+            self.sentence_complete()
 
         else:
             self.get_random_sentence()
 
 class User():
     """For user-specific statistics and settings"""
-    def __init__(self, num_correct=0, default_path="", timer_duration=1, char_timer_value=100,
+    def __init__(self, num_correct=0, default_path="", timer_duration=1, char_timer_value=75,
                 char_based_timer=False, no_typing=False, auto_start=False, show_correct_sentence=False):
         self.num_correct = num_correct
         self.default_path = default_path
@@ -451,8 +463,27 @@ def get_lists_from_db(db):
 
     return deserialized_lists
 
+def set_dark_mode(app):
+    app.setStyle('Fusion')
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(53,53,53))
+    palette.setColor(QPalette.WindowText, Qt.white)
+    palette.setColor(QPalette.Base, QColor(15,15,15))
+    palette.setColor(QPalette.AlternateBase, QColor(53,53,53))
+    palette.setColor(QPalette.ToolTipBase, Qt.white)
+    palette.setColor(QPalette.ToolTipText, Qt.white)
+    palette.setColor(QPalette.Text, Qt.white)
+    palette.setColor(QPalette.Button, QColor(53,53,53))
+    palette.setColor(QPalette.ButtonText, Qt.white)
+    palette.setColor(QPalette.BrightText, Qt.red)
+         
+    palette.setColor(QPalette.Highlight, QColor(78, 118, 206).lighter())
+    palette.setColor(QPalette.HighlightedText, Qt.black)
+    app.setPalette(palette)
+
 if __name__ == "__main__":
     app = QApplication([])
+    set_dark_mode(app)
     app.setStyleSheet("QLabel{font-size: 8pt;}")
 
     connection = db.create_connection('data.db')
