@@ -8,8 +8,8 @@ def create_connection(db_file):
         conn = sqlite3.connect(db_file)
         create_users_table(conn)
         create_sentence_lists_table(conn)
-    except Error:
-        print(Error)
+    except sqlite3.Error as err:
+        print(err)
 
     return conn
 
@@ -23,8 +23,8 @@ def create_sentence_lists_table(conn):
             numCorrect Int
         )'''
         conn.execute(sql)
-    except:
-        print("Table already exists.")
+    except sqlite3.Error as err:
+        print(err)
 
 def drop_sentence_lists_table(conn):
     """Delete table for sentence lists"""
@@ -73,8 +73,8 @@ def create_users_table(conn):
             darkMode Bool
         )'''
         conn.execute(sql)
-    except:
-        print("Table already exists.")
+    except sqlite3.Error as err:
+        print(err)
 
 def drop_users_table(conn):
     """Delete all users in table"""

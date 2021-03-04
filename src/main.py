@@ -15,7 +15,6 @@ from controller import Controller
 """
 To Do:
 - Refactor code + organize
-- Add shortcuts menu with new shortcuts
 - Customize sentences that are valid when generating a sentence (e.g. <50 characters)
 """
 
@@ -36,7 +35,6 @@ class MainWindow(QMainWindow):
 
         self.create_menu_bar() # Set up menu bar
         self.create_info_line() # Set up info line
-        self.init_shortcuts()
 
         self.sentence_label = QLabel("Open a text file to get started or use the default sentences.")
         self.sentence_label.setAlignment(Qt.AlignCenter)
@@ -73,6 +71,8 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.input_box)
         self.layout.addWidget(self.generate_sentence_btn)
         self.window.setLayout(self.layout)
+
+        self.init_shortcuts()
 
         self.no_typing_mode()
 
@@ -137,7 +137,10 @@ class MainWindow(QMainWindow):
         action_shortcuts = [
             ("Ctrl+O", self.open_file_act),
             ("Ctrl+L", self.sentence_settings_act),
-            ("Ctrl+S", self.settings_act)
+            ("Ctrl+S", self.settings_act),
+            ("Z", self.correct_btn),
+            ("X", self.incorrect_btn),
+            ("C", self.show_answer_btn)
         ]
         for shortcut in action_shortcuts:
             if len(shortcut) == 2:
@@ -208,6 +211,14 @@ class MainWindow(QMainWindow):
         self.sentence_list_window = SentenceListWindow(self)
         self.sentence_list_window.show()
 
+    def add_sentence_list(self):
+        self.sentence_act = QAction(f"{self.controller.current_list.title}")
+        self.sentence_act.triggered.connect(
+            partial(self.use_sentence_list, self.controller.current_list))
+        self.menu_actions.append(self.sentence_act)
+        self.sentence_menu.addAction(self.sentence_act)
+        self.controller.sentence_lists.append(self.controller.current_list)
+
     def open_file(self):
         """Open a text file and extract the lines as sentences"""
         fname = QFileDialog().getOpenFileName(self, 'Open file', self.user.default_path,
@@ -227,20 +238,14 @@ class MainWindow(QMainWindow):
                     self.controller.current_list.num_correct)
 
             with open(fname[0], 'r') as file:
-                duplicates = [os.path.basename(fname[0]) == sentence_list.title 
+                duplicates = [os.path.basename(fname[0]) == sentence_list.title
                     for sentence_list in self.controller.sentence_lists]
-                print(duplicates)
                 if sum(duplicates) <= 1 in duplicates:
                     self.controller.current_list = next((sentence_list for sentence_list in self.controller.sentence_lists
                         if os.path.basename(fname[0]) == sentence_list.title), None)
                 else:
                     self.controller.current_list = SentenceList(file.readlines(), os.path.basename(fname[0]))
-                    self.sentence_act = QAction(f"{self.controller.current_list.title}")
-                    self.sentence_act.triggered.connect(
-                        partial(self.use_sentence_list, self.controller.current_list))
-                    self.menu_actions.append(self.sentence_act)
-                    self.sentence_menu.addAction(self.sentence_act)
-                    self.controller.sentence_lists.append(self.controller.current_list)
+                    self.add_sentence_list()
 
                 self.current_list_label.setText(f"Current List: {self.controller.current_list.title}")
                 self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
@@ -429,6 +434,24 @@ class MainWindow(QMainWindow):
             palette.setColor(QPalette.HighlightedText, Qt.black)
             app.setPalette(palette)
         else:
+            """
+            app.setStyle('Fusion')
+            palette = QPalette()
+            palette.setColor(QPalette.Window, QColor(203,203,203))
+            palette.setColor(QPalette.WindowText, Qt.black)
+            palette.setColor(QPalette.Base, QColor(238,238,238))
+            palette.setColor(QPalette.AlternateBase, QColor(203,203,203))
+            palette.setColor(QPalette.ToolTipBase, Qt.black)
+            palette.setColor(QPalette.ToolTipText, Qt.black)
+            palette.setColor(QPalette.Text, Qt.black)
+            palette.setColor(QPalette.Button, QColor(203,203,203))
+            palette.setColor(QPalette.ButtonText, Qt.black)
+            palette.setColor(QPalette.BrightText, Qt.red)
+                
+            palette.setColor(QPalette.Highlight, QColor(78, 118, 206).lighter())
+            palette.setColor(QPalette.HighlightedText, Qt.white)
+            """
+            app.setPalette(default_palette)
             pass
 
 class User():
@@ -476,8 +499,8 @@ def get_user_from_db(db):
             current_user.dark_mode])
     else:
         # Get the first user (only one user is supported right now)
-        current_user = User(users[0][0], users[0][1], users[0][2], 
-            users[0][3], users[0][4], users[0][5], users[0][6], 
+        current_user = User(users[0][0], users[0][1], users[0][2],
+            users[0][3], users[0][4], users[0][5], users[0][6],
             bool(users[0][7]), bool(users[0][8]))
 
     return current_user
@@ -509,6 +532,7 @@ def get_lists_from_db(db):
 if __name__ == "__main__":
     app = QApplication([])
     app.setStyleSheet("QLabel{font-size: 8pt;}")
+    default_palette = QGuiApplication.palette()
 
     connection = db.create_connection('data.db')
     user = get_user_from_db(db)
