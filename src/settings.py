@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import (
     QLabel, QLineEdit, 
     QCheckBox, QPushButton, 
     QWidget, QMainWindow,
-    QSlider, QSpinBox)
+    QSlider, QSpinBox,
+    QTabWidget)
 
 class SettingsWindow(QMainWindow):
     def __init__(self, mw, user):
@@ -16,69 +17,87 @@ class SettingsWindow(QMainWindow):
         self.setWindowTitle("Settings")
 
         self.layout = QVBoxLayout()
-
-        self.settings_box = QFormLayout()
-        self.settings_box.setAlignment(Qt.AlignHCenter)
+        self.layout.setAlignment(Qt.AlignHCenter)
 
         self.settings_label = QLabel("Settings")
         self.settings_label.setAlignment(Qt.AlignCenter)
         self.settings_label.setStyleSheet("font: 12px")
-        self.settings_box.addRow(self.settings_label)
+        self.layout.addWidget(self.settings_label)
+
+        self.tabs = QTabWidget()
+        self.main_tab = QWidget()
+        self.timer_tab = QWidget()
+        self.main_tab_content()
+        self.timer_tab_content()
+        self.tabs.addTab(self.main_tab, "Main")
+        self.tabs.addTab(self.timer_tab, "Timer")
+        self.layout.addWidget(self.tabs)
+        
+        self.save_btn = QPushButton("Save")
+        self.save_btn.setMaximumWidth(100)
+        self.save_btn.clicked.connect(self.save_settings)
+        self.layout.addWidget(self.save_btn)
+        self.layout.setAlignment(self.save_btn, Qt.AlignHCenter)
+
+        self.window = QWidget(self)
+        self.setCentralWidget(self.window)
+        self.window.setLayout(self.layout)
+
+    def main_tab_content(self):
+        self.main_settings_box = QFormLayout()
+        self.main_settings_box.setAlignment(Qt.AlignHCenter)
 
         self.path_label = QLabel("Default Path")
         self.path_input = QLineEdit()
-        self.path_input.setText(str(user.default_path))
+        self.path_input.setText(str(self.user.default_path))
         self.path_input.setMaximumWidth(150)
-        self.settings_box.addRow(self.path_label, self.path_input)
+        self.main_settings_box.addRow(self.path_label, self.path_input)
+
+        self.no_typing_cb = QCheckBox("No Typing")
+        if bool(self.user.no_typing) is True:
+            self.no_typing_cb.setChecked(True)
+        self.main_settings_box.addWidget(self.no_typing_cb)
+
+        self.show_correct_cb = QCheckBox("Show Correct Answer")
+        if self.user.show_correct_sentence is True:
+            self.show_correct_cb.setChecked(True)
+        self.main_settings_box.addWidget(self.show_correct_cb)
+
+        self.dark_mode_cb = QCheckBox("Dark Mode")
+        if self.user.dark_mode is True:
+            self.dark_mode_cb.setChecked(True)
+        self.main_settings_box.addWidget(self.dark_mode_cb)
+
+        self.main_tab.setLayout(self.main_settings_box)
+
+    def timer_tab_content(self):
+        self.timer_settings_box = QFormLayout()
+        self.timer_settings_box.setAlignment(Qt.AlignHCenter)
 
         self.timer_label = QLabel("Timer")
         self.timer_input = QSpinBox()
-        self.timer_input.setValue(user.timer_duration)
+        self.timer_input.setValue(self.user.timer_duration)
         self.timer_input.setMaximumWidth(50)
-        self.settings_box.addRow(self.timer_label, self.timer_input)
+        self.timer_settings_box.addRow(self.timer_label, self.timer_input)
 
         self.char_timer_label = QLabel(f"ms/character: {self.user.char_timer_value}")
         self.char_timer_slider = QSlider(Qt.Horizontal, self)
         self.char_timer_slider.setValue(self.user.char_timer_value)
         self.char_timer_slider.setRange(10, 150)
         self.char_timer_slider.valueChanged.connect(self.change_slider_value)
-        self.settings_box.addRow(self.char_timer_label, self.char_timer_slider)
+        self.timer_settings_box.addRow(self.char_timer_label, self.char_timer_slider)
 
         self.char_based_timer_cb = QCheckBox("Characater length-based Timer")
-        if bool(user.char_based_timer) is True:
+        if bool(self.user.char_based_timer) is True:
             self.char_based_timer_cb.setChecked(True)
-        self.settings_box.addWidget(self.char_based_timer_cb)
-
-        self.no_typing_cb = QCheckBox("No Typing")
-        if bool(user.no_typing) is True:
-            self.no_typing_cb.setChecked(True)
-        self.settings_box.addWidget(self.no_typing_cb)
+        self.timer_settings_box.addWidget(self.char_based_timer_cb)
 
         self.auto_start_cb = QCheckBox("Auto Start")
-        if bool(user.auto_start) is True:
+        if bool(self.user.auto_start) is True:
             self.auto_start_cb.setChecked(True)
-        self.settings_box.addWidget(self.auto_start_cb)
+        self.timer_settings_box.addWidget(self.auto_start_cb)
 
-        self.show_correct_cb = QCheckBox("Show Correct Answer")
-        if user.show_correct_sentence is True:
-            self.show_correct_cb.setChecked(True)
-        self.settings_box.addWidget(self.show_correct_cb)
-
-        self.dark_mode_cb = QCheckBox("Dark Mode")
-        if user.dark_mode is True:
-            self.dark_mode_cb.setChecked(True)
-        self.settings_box.addWidget(self.dark_mode_cb)
-
-        self.save_btn = QPushButton("Save")
-        self.save_btn.setMaximumWidth(100)
-        self.save_btn.clicked.connect(self.save_settings)
-        self.settings_box.addWidget(self.save_btn)
-
-        self.layout.addLayout(self.settings_box)
-
-        self.window = QWidget(self)
-        self.setCentralWidget(self.window)
-        self.window.setLayout(self.layout)
+        self.timer_tab.setLayout(self.timer_settings_box)
 
     def change_slider_value(self, value):
         self.user.char_timer_value = value
