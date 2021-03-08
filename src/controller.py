@@ -1,3 +1,4 @@
+"""General functions used in the application"""
 from sentence_list import SentenceList
 
 class Controller():

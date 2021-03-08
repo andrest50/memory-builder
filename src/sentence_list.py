@@ -1,3 +1,4 @@
+"""Classes for sentence list widgets and list object"""
 import json
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -36,7 +37,8 @@ class SentenceListWindow(QMainWindow):
         self.window.setLayout(self.layout)
 
     def closeEvent(self, event):
-        self.connection.close() # Close database connection
+        """Close database connection upon window closing"""
+        self.connection.close()
 
     def stack_sentence_lists(self):
         """Set up sentence list stack and associated settings"""

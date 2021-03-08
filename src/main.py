@@ -16,6 +16,8 @@ from controller import Controller
 To Do:
 - Refactor code + organize
 - Customize sentences that are valid when generating a sentence (e.g. <50 characters)
+- Fix switching from dark mode to light mode
+- Fix switching between lists when in no-typing mode and no answer inputted
 """
 
 class MainWindow(QMainWindow):
@@ -56,7 +58,6 @@ class MainWindow(QMainWindow):
         self.show_answer_layout.setAlignment(Qt.AlignCenter)
         self.show_answer_btn = QPushButton("Show Answer", self)
         self.show_answer_btn.setMaximumWidth(100)
-        #self.show_answer_btn.setStyleSheet("background-color: #8EC6D6;")
         self.show_answer_btn.clicked.connect(self.show_answer)
         self.show_answer_btn.hide()
         self.show_answer_layout.addWidget(self.show_answer_btn)
@@ -83,9 +84,7 @@ class MainWindow(QMainWindow):
         self.answer_timer.timeout.connect(self.clear_answer)
 
     def create_menu_bar(self):
-        """
-        Create the MainWindow menu bar with all associated submenus and actions.
-        """
+        """Create the MainWindow menu bar with all associated submenus and actions."""
         self.menubar = self.menuBar()
 
         # Sentence List Menu
@@ -111,29 +110,23 @@ class MainWindow(QMainWindow):
         self.menubar.addAction(self.settings_act)
 
     def create_info_line(self):
-        """
-        Create layout for information about current list and number of correct answers.
-        """
-        # Single label for current list
+        """Create layout for information about current list and number of correct answers."""
+
+        # Label for current list name
         self.current_list_label = QLabel(f"Current List: {self.controller.current_list.title}")
         self.current_list_label.setAlignment(Qt.AlignLeft)
 
-        # Two labels in a vertical box layout for number of correct answers
-        #self.num_correct_label = QLabel(f"Total Correct: {str(self.user.num_correct)}")
-        #self.num_correct_label.setAlignment(Qt.AlignRight)
-        #self.num_correct_label.setContentsMargins(0, 0, -40, 0)
-
+        # Label for number of correct answers in list
         self.num_list_correct_label = QLabel(f"List Correct: {str(self.controller.current_list.num_correct)}")
         self.num_list_correct_label.setAlignment(Qt.AlignRight)
 
         # Main info layout that contains the single label and inner layout
         self.info_layout = QHBoxLayout()
         self.info_layout.addWidget(self.current_list_label)
-        #self.info_layout.addWidget(self.num_correct_label)
         self.info_layout.addWidget(self.num_list_correct_label)
-        #self.info_layout.addLayout(self.num_correct_layout)
 
     def init_shortcuts(self):
+        """Set up the application shortcuts"""
         action_shortcuts = [
             ("Ctrl+O", self.open_file_act),
             ("Ctrl+L", self.sentence_settings_act),
@@ -183,12 +176,11 @@ class MainWindow(QMainWindow):
                     self.controller.current_list.num_completed,
                     self.controller.current_list.num_correct)
 
-        connection.close() # Close database connection
-        self.close() # Close application
+        connection.close()
+        self.close()
 
     def use_sentence_list(self, sentence_list):
         """Update the current sentence list and related labels"""
-        #self.controller.print_all_lists()
         db.update_sentence_list(
                 connection,
                 json.dumps(self.controller.current_list.sentences),
@@ -249,8 +241,10 @@ class MainWindow(QMainWindow):
 
                 self.current_list_label.setText(f"Current List: {self.controller.current_list.title}")
                 self.num_list_correct_label.setText(f"List Correct: {self.controller.current_list.num_correct}")
+                self.clear_answer(False)
 
     def prep_display_sentence(self):
+        """Setting up main window to display sentence"""
         self.correct_answer_label.setText("")
         self.correct_or_not_label.setText("")
         self.answer_timer.stop()
@@ -295,10 +289,8 @@ class MainWindow(QMainWindow):
     def init_button_layout(self):
         """Set up the buttons for no typing mode"""
         self.correct_btn = QPushButton("Correct")
-        #self.correct_btn.setStyleSheet("background-color: #ABC2DC;")
         self.correct_btn.clicked.connect(self.correct_btn_click)
         self.incorrect_btn = QPushButton("Incorrect")
-        #self.incorrect_btn.setStyleSheet("background-color: #ABC2DC;")
         self.incorrect_btn.clicked.connect(self.incorrect_btn_click)
         self.btn_layout = QHBoxLayout()
         self.btn_layout.setAlignment(Qt.AlignHCenter)
@@ -360,6 +352,8 @@ class MainWindow(QMainWindow):
         """Hide the answer label (correct or incorrect)"""
         if auto_start is None:
             auto_start = self.user.auto_start
+        if user.no_typing:
+            self.show_answer_btn.hide()
         self.correct_or_not_label.setText("")
         self.sentence_label.setText("Generate a new sentence.")
         self.answer_timer.stop()
@@ -404,18 +398,7 @@ class MainWindow(QMainWindow):
             self.get_random_sentence()
 
     def set_dark_mode(self, dark_mode_bool):
-        """
-        if dark_mode_bool:
-            path = ":/light.qss"
-        else:
-            path = ":/dark.qss"
-        app = QApplication.instance()
-        file = QFile(path)
-        file.open(QFile.ReadOnly | QFile.Text)
-        stream = QTextStream(file)
-        app.setStyleSheet(stream.readAll())
-        """
-        
+        """Set the application palette"""
         if dark_mode_bool:
             app.setStyle('Fusion')
             palette = QPalette()
@@ -434,23 +417,6 @@ class MainWindow(QMainWindow):
             palette.setColor(QPalette.HighlightedText, Qt.black)
             app.setPalette(palette)
         else:
-            """
-            app.setStyle('Fusion')
-            palette = QPalette()
-            palette.setColor(QPalette.Window, QColor(203,203,203))
-            palette.setColor(QPalette.WindowText, Qt.black)
-            palette.setColor(QPalette.Base, QColor(238,238,238))
-            palette.setColor(QPalette.AlternateBase, QColor(203,203,203))
-            palette.setColor(QPalette.ToolTipBase, Qt.black)
-            palette.setColor(QPalette.ToolTipText, Qt.black)
-            palette.setColor(QPalette.Text, Qt.black)
-            palette.setColor(QPalette.Button, QColor(203,203,203))
-            palette.setColor(QPalette.ButtonText, Qt.black)
-            palette.setColor(QPalette.BrightText, Qt.red)
-                
-            palette.setColor(QPalette.Highlight, QColor(78, 118, 206).lighter())
-            palette.setColor(QPalette.HighlightedText, Qt.white)
-            """
             app.setPalette(default_palette)
             pass
 

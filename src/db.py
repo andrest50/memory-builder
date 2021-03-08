@@ -1,3 +1,4 @@
+"""Managing the sqlite3 database"""
 import sqlite3
 from sqlite3 import Error
 
@@ -118,6 +119,6 @@ if __name__ == '__main__':
     #drop_sentences_list_table(connection)
     #drop_users_table(connection)
     #create_users_table(connection)
-    #add_user(connection, TestUser(3))
+    #add_user(connection, test_user(3))
     #get_all_users(connection)
     connection.close()

@@ -12,13 +12,20 @@ Customize the timer and typing mode to practice the way you want.
 - Keep track of number of correct sentences
 - Automatically generate sentences
 
+## Usage
+
+Run the main.py script in the src/ folder.
+
 ## Screenshots
 
 ![Main window](images/dashboard.jpg)
+
 ![No-typing mode](images/dashboard2.jpg)
+
 ![User settings](images/user_settings.jpg)
+
 ![List settings](images/list_settings.jpg)
 
 ## Code
 
-Written in Python with PyQt5 for the GUI.
+Written in Python with PyQt5 for the GUI and sqlite3 for the database.
