@@ -1,12 +1,20 @@
 """User settings window"""
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QFormLayout,
-    QLabel, QLineEdit,
-    QCheckBox, QPushButton,
-    QWidget, QMainWindow,
-    QSlider, QSpinBox,
-    QTabWidget, QGridLayout)
+    QVBoxLayout,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QCheckBox,
+    QPushButton,
+    QWidget,
+    QMainWindow,
+    QSlider,
+    QSpinBox,
+    QTabWidget,
+    QGridLayout,
+)
+
 
 class SettingsWindow(QMainWindow):
     def __init__(self, mw, user):
@@ -36,7 +44,7 @@ class SettingsWindow(QMainWindow):
         self.tabs.addTab(self.timer_tab, "Timer")
         self.tabs.addTab(self.shortcut_tab, "Shortcuts")
         self.layout.addWidget(self.tabs)
-        
+
         self.save_btn = QPushButton("Save")
         self.save_btn.setMaximumWidth(100)
         self.save_btn.clicked.connect(self.save_settings)
@@ -108,7 +116,7 @@ class SettingsWindow(QMainWindow):
     def shortcut_tab_content(self):
         """Widgets for the shortcuts tab"""
         self.shortcut_grid = QGridLayout()
-        #self.generate_sentence_sc = QLabel("<b>Generate:</b> Space")
+        # self.generate_sentence_sc = QLabel("<b>Generate:</b> Space")
         self.open_file_sc = QLabel("<b>Open File:</b> Ctrl+O")
         self.settings_sc = QLabel("<b>Settings:</b> Ctrl+S")
         self.list_settings_sc = QLabel("<b>List Settings:</b> Ctrl+L")
@@ -116,7 +124,7 @@ class SettingsWindow(QMainWindow):
         self.correct_sc = QLabel("<b>Correct:</b> Z")
         self.incorrect_sc = QLabel("<b>Incorrect:</b> X")
         self.shortcut_grid.setColumnStretch(1, 4)
-        #self.shortcut_grid.addWidget(self.generate_sentence_sc)
+        # self.shortcut_grid.addWidget(self.generate_sentence_sc)
         self.shortcut_grid.addWidget(self.open_file_sc)
         self.shortcut_grid.addWidget(self.settings_sc)
         self.shortcut_grid.addWidget(self.list_settings_sc)

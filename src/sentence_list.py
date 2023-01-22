@@ -1,18 +1,29 @@
 """Classes for sentence list widgets and list object"""
 import json
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
+from PyQt5.QtWidgets import (
+    QMainWindow,
+    QHBoxLayout,
+    QWidget,
+    QListWidget,
+    QStackedWidget,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+)
+from PyQt5.QtGui import QFont
 import db
+
 
 class SentenceListWindow(QMainWindow):
     """Main window for sentence list settings"""
+
     def __init__(self, mw):
         super().__init__()
 
         self.mw = mw
 
-        self.connection = db.create_connection('data.db')
+        self.connection = db.create_connection("data.db")
 
         self.resize(400, 240)
         self.setWindowTitle("Sentence Lists")
@@ -52,8 +63,10 @@ class SentenceListWindow(QMainWindow):
         """Display the current stack item's settings"""
         self.list_stack.setCurrentIndex(index)
 
+
 class SentenceListStackItem(QWidget):
     """List widget item for each sentence list"""
+
     def __init__(self, parent, mw, sentence_list, index):
         super().__init__()
 
@@ -67,10 +80,12 @@ class SentenceListStackItem(QWidget):
         self.info_layout = QFormLayout()
 
         self.list_name_label = QLabel(f"{sentence_list.title}")
-        self.list_name_label.setFont(QFont('Times', weight=QFont.Bold))
+        self.list_name_label.setFont(QFont("Times", weight=QFont.Bold))
         self.info_layout.addRow(self.list_name_label)
 
-        self.list_completed_label = QLabel(f"Number completed: {sentence_list.num_completed}")
+        self.list_completed_label = QLabel(
+            f"Number completed: {sentence_list.num_completed}"
+        )
         self.info_layout.addRow(self.list_completed_label)
 
         self.list_correct_label = QLabel(f"Number correct: {sentence_list.num_correct}")
@@ -99,40 +114,47 @@ class SentenceListStackItem(QWidget):
             old_title = self.sentence_list.title
             self.sentence_list.title = self.rename_line.text()
             action_idx = self.controller.sentence_lists.index(self.sentence_list)
-         
+
             try:
                 self.mw.menu_actions[action_idx].setText(self.sentence_list.title)
             except ValueError:
                 print("Not found")
-          
+
             self.list_name_label.setText(self.rename_line.text())
-            self.parent.list_stack_info.item(action_idx).setText(self.rename_line.text())
+            self.parent.list_stack_info.item(action_idx).setText(
+                self.rename_line.text()
+            )
             if old_title in self.mw.current_list_label.text():
-                self.mw.current_list_label.setText(f"Current List: {self.rename_line.text()}")
+                self.mw.current_list_label.setText(
+                    f"Current List: {self.rename_line.text()}"
+                )
             self.rename_line.setText("")
-         
+
             db.update_sentence_list(
                 self.connection,
                 json.dumps(self.sentence_list.sentences),
                 self.sentence_list.title,
                 self.sentence_list.num_completed,
-                self.sentence_list.num_correct)
+                self.sentence_list.num_correct,
+            )
 
     def delete_list(self):
         """Delete a sentence_list, which deletes it from the database"""
         if not self.sentence_list:
             return
 
-        db.delete_sentence_list(self.connection, json.dumps(self.sentence_list.sentences))
+        db.delete_sentence_list(
+            self.connection, json.dumps(self.sentence_list.sentences)
+        )
         self.controller.deleted_lists.append(self.sentence_list)
         action_idx = self.controller.sentence_lists.index(self.sentence_list)
-     
+
         try:
             self.mw.sentence_menu.removeAction(self.mw.menu_actions[action_idx])
             self.mw.menu_actions.pop(action_idx)
         except ValueError:
             print("Not found")
-      
+
         self.controller.sentence_lists.remove(self.sentence_list)
         if self.controller.current_list == self.sentence_list:
             if self.controller.sentence_lists:
@@ -140,11 +162,13 @@ class SentenceListStackItem(QWidget):
             else:
                 self.mw.no_lists_available()
 
-        #self.sentence_list = None
+        # self.sentence_list = None
         self.parent.list_stack_info.takeItem(self.index)
 
-class SentenceList():
+
+class SentenceList:
     """For lists of sentences imported from a text file and stored in the database"""
+
     def __init__(self, sentences=None, title="Default", num_completed=0, num_correct=0):
         self.sentences = sentences
         self.title = title

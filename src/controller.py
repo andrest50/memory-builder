@@ -1,13 +1,14 @@
 """General functions used in the application"""
 from sentence_list import SentenceList
 
-class Controller():
+
+class Controller:
     def __init__(self, sentence_lists):
         super().__init__()
 
         self.sentence_lists = sentence_lists
         self.current_list = None
-        self.get_start_list() # Get initial sentence list
+        self.get_start_list()  # Get initial sentence list
         self.deleted_lists = []
         self.current_sentence = ""
         self.sentence_active = False
@@ -20,7 +21,7 @@ class Controller():
             self.current_list = SentenceList()
 
     def print_all_lists(self):
-        """For testing purposes to see all sentence lists """
+        """For testing purposes to see all sentence lists"""
         for sentence_list in self.sentence_lists:
             print(sentence_list.sentences)
             print(sentence_list.title)
